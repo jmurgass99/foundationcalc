@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.pyrefly_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Build / dist
+build/
+dist/
+*.egg
+
+# OneDrive markers (no commitear)
+*.tmp
+~$*
+.~lock.*#
+
+# Outputs
+out/
+output/
+*.pdf
+!docs/**/*.pdf
+*.log
+
+# Documentos de referencia y assets binarios pesados
+Documentos de referencia/
+Documentos de referencia */
+*.dwg
+*.DWG
+*.bak
+*.BAK
+*.zip
+*.rar
+*.7z
+*.mp4
+*.mov
+*.avi
+*.K_0
+*.Y02
+*.Y_
+*.k_0
+*.y02
+*.y_
+*.db
+*.sqlite
+*.sqlite3
