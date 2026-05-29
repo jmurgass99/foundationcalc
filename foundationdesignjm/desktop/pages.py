@@ -11,12 +11,25 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
 import matplotlib
-matplotlib.use("TkAgg")
 import numpy as np
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg, NavigationToolbar2Tk,
-)
 from matplotlib.figure import Figure
+
+# Backend interactivo (TkAgg) solo cuando hay GUI/display: la app de escritorio
+# en Windows lo usa; en headless (CI / servidor Linux sin DISPLAY) se degrada a
+# Agg para que el modulo se importe SIN requerir tk. Sin esto, importar este
+# modulo en un runner headless lanza ImportError ("Cannot load backend 'TkAgg'")
+# y tumba la CI. Los tests MVC que CONSTRUYEN paginas usan el fixture tk_root
+# (skipea sin display); el de re-export solo importa, asi que necesita esto.
+try:
+    if os.name != "nt" and not os.environ.get("DISPLAY"):
+        raise RuntimeError("headless: sin display")
+    matplotlib.use("TkAgg")
+    from matplotlib.backends.backend_tkagg import (
+        FigureCanvasTkAgg, NavigationToolbar2Tk,
+    )
+except Exception:
+    matplotlib.use("Agg")
+    FigureCanvasTkAgg = NavigationToolbar2Tk = None  # type: ignore
 
 from .widgets import LabeledCombobox, LabeledEntry, ScrolledOutput
 
