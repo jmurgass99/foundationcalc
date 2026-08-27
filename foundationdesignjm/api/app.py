@@ -35,7 +35,7 @@ def root():
     }
 
 
-@router.post("/api/footings/isolated")
+@router.post("/api/footings/isolated", summary="Dimensionamiento geotécnico y estructural de zapatas aisladas según Eurocódigo 7 / EC2")
 def api_isolated_footing(inp: dict):
     try:
         result = footings.design_isolated_footing(
@@ -52,7 +52,7 @@ def api_isolated_footing(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/walls/cantilever")
+@router.post("/api/walls/cantilever", summary="Estabilidad y armado de muros de contención en ménsula según Eurocódigo 7")
 def api_cantilever_wall(inp: dict):
     try:
         result = walls.design_cantilever_wall(walls.CantileverWallInput(**inp))
@@ -67,7 +67,7 @@ def api_cantilever_wall(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/piles/axial")
+@router.post("/api/piles/axial", summary="Capacidad portante axil de pilotes individuales (punta + fuste) según Eurocódigo 7")
 def api_pile_axial(inp: dict):
     try:
         if "layers_qu_kPa" in inp:
@@ -87,7 +87,7 @@ def api_pile_axial(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/bearing/multilayer")
+@router.post("/api/bearing/multilayer", summary="Capacidad de carga de cimentaciones sobre suelos estratificados multicapa")
 def api_bearing(inp: dict):
     try:
         layers = tuple(bearing.SoilLayerSpec(**l)
@@ -106,7 +106,7 @@ def api_bearing(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/seismic/mononobe_okabe")
+@router.post("/api/seismic/mononobe_okabe", summary="Empuje sísmico dinámico de tierras según método de Mononobe-Okabe (EC8 Parte 5)")
 def api_mo(inp: dict):
     try:
         result = seismic.mononobe_okabe_thrust(seismic.MononobeOkabeInput(**inp))
