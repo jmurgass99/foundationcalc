@@ -193,3 +193,5 @@ __all__ += [
     "ConvergenceError", "FastSAPBridgeError",
     "DependencyError", "ConfigurationError",
 ]
+
+from . import reaction_bridge
