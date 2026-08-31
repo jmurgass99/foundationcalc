@@ -35,9 +35,10 @@ class TestReactionToFoundationBridge:
         pload = reaction_to_point_load(rx)
         assert pload.fz == 450.0
         assert pload.vx == 15.0
-        assert pload.vy == 25.0
+        assert pload.vy == -25.0
         assert pload.mx == 30.0
-        assert pload.my == 40.0
+        assert pload.my == -40.0
+
 
     def test_size_isolated_footing_from_reactions_hand_derived(self) -> None:
         """Hand-derived anchor:

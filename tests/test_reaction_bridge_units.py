@@ -59,7 +59,7 @@ class TestReactionBridgePhysicalUnits:
         assert res_n1["status"] == "OK"
 
     def test_reaction_to_point_load_conversion_preserves_magnitudes(self) -> None:
-        """Verifica que reaction_to_point_load mantenga fuerzas y momentos en valores positivos."""
+        """Verifica que reaction_to_point_load mantenga fuerzas y momentos con sus signos reales (sin abs)."""
         rx = Reaction(
             node_id="N1",
             case="GRAV",
@@ -73,11 +73,12 @@ class TestReactionBridgePhysicalUnits:
 
         pl = reaction_to_point_load(rx)
         assert pl.name == "Reaction_N1_GRAV"
-        assert pl.fz == 350.0
-        assert pl.vx == 12.5
+        assert pl.fz == -350.0
+        assert pl.vx == -12.5
         assert pl.vy == 8.3
-        assert pl.mx == 45.0
+        assert pl.mx == -45.0
         assert pl.my == 60.0
+
 
     def test_design_footings_from_model_integration(self) -> None:
         """Verifica la extracción y dimensionado completo a partir de un Model canónico."""
