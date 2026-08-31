@@ -24,10 +24,27 @@ class PunchingShearResult(BaseModel):
     xi: float
     rho_l: float
     utilization: float
+    applicable: bool = Field(
+        True,
+        description=(
+            "True si el perímetro crítico a 2d cae DENTRO de la planta de la zapata. "
+            "Si es False (zapata compacta), F_sd se anula geométricamente y la "
+            "verificación a 2d NO es concluyente: EC2 §6.4.4(2) exige comprobar "
+            "perímetros a distancia a < 2d. Un utilization=0 con applicable=False "
+            "NO es un PASS."
+        ),
+    )
 
     @property
     def is_ok(self) -> bool:
         return self.utilization <= 1.0
+
+    @property
+    def verdict(self) -> str:
+        """Veredicto honesto: nunca presenta como PASS un chequeo no aplicable."""
+        if not self.applicable:
+            return "NO_APLICABLE_2D"
+        return "PASS" if self.is_ok else "FAIL"
 
 
 def punching_shear_check(
@@ -82,6 +99,11 @@ def punching_shear_check(
 
     utilization = tau_sd / tau_rd_kPa if tau_rd_kPa > 0 else float("inf")
 
+    # Zapata compacta: si el area encerrada por u1 alcanza o excede la planta,
+    # la deduccion de reaccion anula F_sd y el chequeo a 2d pierde sentido
+    # (EC2 6.4.4(2): comprobar perimetros a < 2d). Se marca NO aplicable.
+    applicable = A_u1 < A_footing
+
     return PunchingShearResult(
         u1=u1,
         d_eff=d,
@@ -93,4 +115,5 @@ def punching_shear_check(
         xi=xi,
         rho_l=rho_l,
         utilization=utilization,
+        applicable=applicable,
     )

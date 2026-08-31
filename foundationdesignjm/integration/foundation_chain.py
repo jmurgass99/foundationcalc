@@ -584,10 +584,22 @@ def _generate_memoria_markdown(
         f"| :--- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ])
 
+    any_not_applicable = False
     for nid, pch in punching_checks.items():
-        status_txt = "OK" if pch.is_ok else "FALLA"
+        if not pch.applicable:
+            status_txt = "NO APLICABLE (2d)"
+            any_not_applicable = True
+        else:
+            status_txt = "OK" if pch.is_ok else "FALLA"
         lines.append(
             f"| `{nid}` | {pch.u1:.3f} | {pch.d_eff:.3f} | {pch.tau_sd:.1f} | {pch.tau_rd:.1f} | {pch.utilization:.2f} | **{status_txt}** |"
+        )
+    if any_not_applicable:
+        lines.append(
+            "\n> ⚠️ **NO APLICABLE (2d)**: el perímetro crítico a 2d excede la planta de la "
+            "zapata (zapata compacta) y la fuerza neta de punzonamiento se anula "
+            "geométricamente. EC2 §6.4.4(2) exige en este caso comprobar perímetros a "
+            "distancia a < 2d — verificación PENDIENTE, no un aprobado."
         )
 
     if combined_footings:

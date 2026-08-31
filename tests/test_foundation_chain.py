@@ -190,3 +190,69 @@ class TestFoundationChain:
         assert mock_safe.add_mat_slab.called
         assert mock_safe.add_winkler_springs.called
         assert mock_safe.add_column_load.called
+
+
+class TestPunchingApplicability:
+    """Fix del controlador (auditoria AG15): una zapata compacta cuyo perimetro
+    critico a 2d excede la planta NO puede reportarse como PASS con
+    utilization=0 -- EC2 6.4.4(2) exige perimetros a < 2d en ese caso."""
+
+    def test_compact_footing_reports_not_applicable(self) -> None:
+        """1.2x1.2x0.50 con columna 0.40: A_u1=4.14 m2 > 1.44 m2 -> no aplicable."""
+        from foundationdesignjm.core.geometry import Column, RectangularFoundation
+        from foundationdesignjm.design.punching_shear import punching_shear_check
+
+        res = punching_shear_check(
+            foundation=RectangularFoundation(length=1200.0, width=1200.0, thickness=500.0),
+            column=Column(length=400.0, width=400.0, pos_x=600.0, pos_y=600.0),
+            N_sd_kN=281.1,
+            fck_MPa=30.0,
+            rho_x=0.005,
+            rho_y=0.005,
+            d_eff_m=0.45,
+        )
+        assert res.applicable is False
+        assert res.verdict == "NO_APLICABLE_2D"
+        # La fuerza neta se anula geometricamente -- eso es lo que delata el caso
+        assert res.F_sd == 0.0
+
+    def test_benchmark_footing_stays_applicable(self) -> None:
+        """El benchmark AG13 (2.5x2.5, d=0.55): A_u1=5.72 < 6.25 -> aplicable y PASS."""
+        from foundationdesignjm.core.geometry import Column, RectangularFoundation
+        from foundationdesignjm.design.punching_shear import punching_shear_check
+
+        res = punching_shear_check(
+            foundation=RectangularFoundation(length=2500.0, width=2500.0, thickness=600.0),
+            column=Column(length=400.0, width=400.0, pos_x=1250.0, pos_y=1250.0),
+            N_sd_kN=800.0,
+            fck_MPa=30.0,
+            rho_x=0.005,
+            rho_y=0.005,
+            d_eff_m=0.55,
+        )
+        assert res.applicable is True
+        assert res.verdict == "PASS"
+        assert res.u1 == pytest.approx(8.5115, rel=1e-3)
+
+    def test_memoria_flags_not_applicable_punching(self) -> None:
+        """La memoria de la cadena marca NO APLICABLE, nunca OK, para el caso compacto."""
+        from jmstructural_common.model import Reaction
+        from foundationdesignjm.integration.foundation_chain import foundation_chain_from_etabs, foundation_package
+        import tempfile, os
+
+        rx = [Reaction(node_id="1", case="ELU", fx_kN=0, fy_kN=0, fz_kN=281.1,
+                       mx_kNm=0, my_kNm=0, mz_kNm=0)]
+        with tempfile.TemporaryDirectory() as tmp:
+            pkg = foundation_package(
+                etabs_or_reactions=rx,
+                soil_params={"allowable_bearing_kPa": 250.0,
+                             "subgrade_modulus_ks_kN_m3": 40000.0,
+                             "min_size_m": 1.2, "size_step_m": 0.05},
+                footing_thickness_m=0.50,
+                concrete_fck_MPa=30.0,
+                column_dimensions=(0.40, 0.40),
+                output_dir=tmp,
+            )
+            text = pkg.memoria_markdown
+            assert "NO APLICABLE" in text
+            assert "6.4.4" in text
