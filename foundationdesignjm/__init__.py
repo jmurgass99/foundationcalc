@@ -188,10 +188,30 @@ from .exceptions import (
     DependencyError, ConfigurationError,
 )
 
-__all__ += [
-    "FoundationError", "GeotechError", "DesignError", "CodeError",
-    "ConvergenceError", "FastSAPBridgeError",
-    "DependencyError", "ConfigurationError",
-]
-
 from . import reaction_bridge
+from .design.reinforcement import (
+    FootingFlexureDetail,
+    anchorage_length_ec2,
+    design_footing_flexure_both_ways,
+    select_footing_rebar,
+)
+from .integration.dxf_armado import ArmadoZapataDXF, export_armado_zapata
+from .integration.foundation_chain import (
+    FoundationChainResult,
+    FoundationPackageResult,
+    foundation_chain_from_etabs,
+    foundation_package,
+)
+
+__all__ += [
+    "FootingFlexureDetail",
+    "anchorage_length_ec2",
+    "design_footing_flexure_both_ways",
+    "select_footing_rebar",
+    "ArmadoZapataDXF",
+    "export_armado_zapata",
+    "FoundationChainResult",
+    "FoundationPackageResult",
+    "foundation_chain_from_etabs",
+    "foundation_package",
+]

@@ -125,3 +125,201 @@ def reinforcement_distribution_rectangular_footing(
         "As_central": As_central,
         "As_lateral": As_lateral,
     }
+
+
+class FootingFlexureDetail(BaseModel):
+    """Detalle de armado por flexión en una dirección de la zapata."""
+
+    direction: str = Field(..., description="Dirección: 'X' (paralela a L) o 'Y' (paralela a B)")
+    M_Ed_kNm: float = Field(..., description="Momento flector de cálculo en la sección de referencia (kNm)")
+    As_req_mm2: float = Field(..., description="Área de acero requerida por cálculo (mm²)")
+    As_min_mm2: float = Field(..., description="Cuantía mínima geométrica EC2 §9.2.1.1 (mm²)")
+    As_prov_mm2: float = Field(..., description="Área de acero dispuesta = max(req, min) (mm²)")
+    bar_diameter_mm: float = Field(..., description="Diámetro comercial de barra (mm)")
+    spacing_mm: float = Field(..., description="Separación entre barras (mm)")
+    n_bars: int = Field(..., description="Número total de barras")
+    l_bd_mm: float = Field(..., description="Longitud básica/diseño de anclaje EC2 §8.4.4 (mm)")
+    l_avail_mm: float = Field(..., description="Longitud recta disponible en el vuelo (mm)")
+    hook_required: bool = Field(False, description="Indica si se requiere patilla/gancho a 90° por anclaje")
+    status: str = Field("OK", description="Estado de verificación ('OK' o 'HOOK_REQUIRED')")
+
+
+def anchorage_length_ec2(
+    phi_mm: float,
+    fck_MPa: float,
+    fyk_MPa: float = 500.0,
+    As_req_mm2: float = 0.0,
+    As_prov_mm2: float = 0.0,
+    alpha_hook: bool = False,
+    good_bond: bool = True,
+) -> tuple[float, float]:
+    """Calcula longitud básica l_b,rqd y de diseño l_bd de anclaje según Eurocode 2 §8.4.3/§8.4.4.
+
+    Args:
+        phi_mm: Diámetro nominal de la barra en mm.
+        fck_MPa: Resistencia característica del hormigón en MPa.
+        fyk_MPa: Límite elástico característico del acero en MPa (default 500).
+        As_req_mm2: Área de acero requerida.
+        As_prov_mm2: Área de acero provista.
+        alpha_hook: True si se usa gancho a 90° (alpha1 = 0.7 para tracción).
+        good_bond: True para condiciones de buena adherencia (eta1 = 1.0).
+
+    Returns:
+        Tupla (l_b_rqd_mm, l_bd_mm).
+    """
+    fctm = 0.30 * (fck_MPa ** (2.0 / 3.0))
+    fctk_005 = 0.70 * fctm
+    fctd = fctk_005 / 1.5
+    eta1 = 1.0 if good_bond else 0.7
+    eta2 = 1.0 if phi_mm <= 32.0 else (132.0 - phi_mm) / 100.0
+    fbd = 2.25 * eta1 * eta2 * fctd  # N/mm²
+
+    fyd = fyk_MPa / 1.15  # N/mm²
+    if As_prov_mm2 > 0 and As_req_mm2 > 0:
+        sigma_sd = min(fyd, fyd * (As_req_mm2 / As_prov_mm2))
+    else:
+        sigma_sd = fyd
+
+    l_b_rqd = (phi_mm / 4.0) * (sigma_sd / fbd)
+    alpha1 = 0.7 if alpha_hook else 1.0
+    l_b_min = max(0.3 * l_b_rqd, 10.0 * phi_mm, 100.0)
+    l_bd = max(alpha1 * l_b_rqd, l_b_min)
+    return l_b_rqd, l_bd
+
+
+def select_footing_rebar(
+    As_prov_mm2: float,
+    width_mm: float,
+    thickness_mm: float,
+    preferred_phi_mm: float = 16.0,
+    cover_mm: float = 50.0,
+) -> tuple[float, float, int]:
+    """Selecciona diámetro comercial, separación y número de barras para una zapata.
+
+    Cumple límites de separación EC2 §9.8.2.2: s ≤ min(2.5h, 250 mm).
+    """
+    commercial_bars = [10.0, 12.0, 16.0, 20.0, 25.0, 32.0]
+    if preferred_phi_mm not in commercial_bars:
+        preferred_phi_mm = 16.0
+
+    s_max = min(2.5 * thickness_mm, 250.0)
+    s_min = 100.0
+
+    # Ordenar priorizando preferred_phi_mm
+    ordered_bars = [preferred_phi_mm] + [b for b in commercial_bars if b != preferred_phi_mm]
+
+    for phi in ordered_bars:
+        area_bar = (math.pi * phi ** 2) / 4.0
+        n_needed = math.ceil(As_prov_mm2 / area_bar)
+        n_bars = max(n_needed, 3)
+
+        effective_width = max(width_mm - 2.0 * cover_mm, 100.0)
+        spacing = effective_width / max(n_bars - 1, 1)
+
+        # Redondear espaciado a múltiplos de 10 mm hacia abajo
+        spacing = math.floor(spacing / 10.0) * 10.0
+        spacing = max(spacing, s_min)
+
+        if spacing <= s_max:
+            # Recalcular n_bars reales con el espaciado
+            n_bars_real = math.floor(effective_width / spacing) + 1
+            if n_bars_real * area_bar >= As_prov_mm2 * 0.98:
+                return phi, spacing, n_bars_real
+
+    # Fallback con preferred_phi
+    area_bar = (math.pi * preferred_phi_mm ** 2) / 4.0
+    n_bars = max(math.ceil(As_prov_mm2 / area_bar), 3)
+    spacing = min(s_max, max(s_min, (width_mm - 2.0 * cover_mm) / (n_bars - 1)))
+    return preferred_phi_mm, round(spacing, -1), n_bars
+
+
+def design_footing_flexure_both_ways(
+    B_m: float,
+    L_m: float,
+    h_m: float,
+    N_Ed_kN: float,
+    Mx_Ed_kNm: float = 0.0,
+    My_Ed_kNm: float = 0.0,
+    cx_m: float = 0.40,
+    cy_m: float = 0.40,
+    concrete: Concrete = Concrete(fck=30),
+    steel: ReinforcingSteel = ReinforcingSteel(fyk=500),
+    cover_mm: float = 50.0,
+    preferred_phi_mm: float = 16.0,
+) -> dict[str, FootingFlexureDetail]:
+    """Diseña la armadura por flexión en ambas direcciones (X e Y) de una zapata aislada.
+
+    Calcula momentos en las secciones de referencia críticas (cara de columna + 0.15*a),
+    aplica cuantías mínimas de flexión EC2 §9.2.1.1 / §9.8.2, selecciona barras y
+    comprueba la longitud de anclaje en el vuelo.
+    """
+    if B_m <= 0 or L_m <= 0 or h_m <= 0:
+        raise ValueError("Dimensiones de zapata deben ser positivas.")
+
+    # 1. Presión media y brazos de palanca al voladizo
+    # Vuelo en dirección X (paralelo a L): vx = (L - cx)/2 + 0.15*cx
+    # Vuelo en dirección Y (paralelo a B): vy = (B - cy)/2 + 0.15*cy
+    vx_m = max((L_m - cx_m) / 2.0 + 0.15 * cx_m, 0.10)
+    vy_m = max((B_m - cy_m) / 2.0 + 0.15 * cy_m, 0.10)
+
+    area_m2 = B_m * L_m
+    q_avg_kPa = max(N_Ed_kN / area_m2, 0.0)
+
+    # Momentos flectores en la sección de referencia
+    # M_Ed_X (actúa sobre ancho B, brazo vx):
+    M_Ed_x = q_avg_kPa * B_m * (vx_m ** 2) / 2.0
+    # M_Ed_Y (actúa sobre longitud L, brazo vy):
+    M_Ed_y = q_avg_kPa * L_m * (vy_m ** 2) / 2.0
+
+    # 2. Diseño por flexión en X (paralelo a L)
+    b_x_mm = B_m * 1000.0
+    d_x_mm = max((h_m * 1000.0) - cover_mm - (preferred_phi_mm / 2.0), 100.0)
+    res_x = flexural_reinforcement(M_Ed_x, b_x_mm, d_x_mm, concrete, steel)
+    phi_x, s_x, n_x = select_footing_rebar(res_x.As_provided, b_x_mm, h_m * 1000.0, preferred_phi_mm, cover_mm)
+    As_prov_x = n_x * (math.pi * phi_x ** 2) / 4.0
+    _, l_bd_x = anchorage_length_ec2(phi_x, concrete.fck, steel.fyk, res_x.As_required, As_prov_x)
+    l_avail_x = max(((L_m - cx_m) / 2.0 * 1000.0) - cover_mm, 50.0)
+    hook_x = l_bd_x > l_avail_x
+
+    detail_x = FootingFlexureDetail(
+        direction="X",
+        M_Ed_kNm=M_Ed_x,
+        As_req_mm2=res_x.As_required,
+        As_min_mm2=res_x.As_min,
+        As_prov_mm2=As_prov_x,
+        bar_diameter_mm=phi_x,
+        spacing_mm=s_x,
+        n_bars=n_x,
+        l_bd_mm=l_bd_x,
+        l_avail_mm=l_avail_x,
+        hook_required=hook_x,
+        status="HOOK_REQUIRED" if hook_x else "OK",
+    )
+
+    # 3. Diseño por flexión en Y (paralelo a B)
+    b_y_mm = L_m * 1000.0
+    d_y_mm = max(d_x_mm - phi_x, 100.0)  # capa superior del emparrillado
+    res_y = flexural_reinforcement(M_Ed_y, b_y_mm, d_y_mm, concrete, steel)
+    phi_y, s_y, n_y = select_footing_rebar(res_y.As_provided, b_y_mm, h_m * 1000.0, preferred_phi_mm, cover_mm)
+    As_prov_y = n_y * (math.pi * phi_y ** 2) / 4.0
+    _, l_bd_y = anchorage_length_ec2(phi_y, concrete.fck, steel.fyk, res_y.As_required, As_prov_y)
+    l_avail_y = max(((B_m - cy_m) / 2.0 * 1000.0) - cover_mm, 50.0)
+    hook_y = l_bd_y > l_avail_y
+
+    detail_y = FootingFlexureDetail(
+        direction="Y",
+        M_Ed_kNm=M_Ed_y,
+        As_req_mm2=res_y.As_required,
+        As_min_mm2=res_y.As_min,
+        As_prov_mm2=As_prov_y,
+        bar_diameter_mm=phi_y,
+        spacing_mm=s_y,
+        n_bars=n_y,
+        l_bd_mm=l_bd_y,
+        l_avail_mm=l_avail_y,
+        hook_required=hook_y,
+        status="HOOK_REQUIRED" if hook_y else "OK",
+    )
+
+    return {"X": detail_x, "Y": detail_y}
+
