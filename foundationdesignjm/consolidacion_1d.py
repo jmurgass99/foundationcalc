@@ -41,10 +41,24 @@ class ConsolidationResult:
 
 
 def _Tv_from_U(U: float) -> float:
-    """Inversa de la curva U-Tv de Terzaghi."""
-    if U < 0.6:
-        return (pi / 4.0) * U ** 2
-    return -(4.0 / (pi ** 2)) * log10(1 - U) * 2.303
+    """Inversa de la curva U-Tv de Terzaghi.
+
+        U <  0.6 :  Tv = (pi/4)·U²
+        U >= 0.6 :  Tv = -(4/pi²)·ln[(1-U)·pi²/8]
+
+    DEFECTO CORREGIDO: a la rama alta le faltaba el factor pi²/8 DENTRO del
+    logaritmo (calculaba -(4/pi²)·ln(1-U)). Daba Tv90 = 0.9334 frente al
+    correcto 0.8481, un +10.1 % en todos los tiempos de consolidación.
+
+    Delega en `analysis.consolidacion_1d.Tv_from_U`, que ya era correcta, para
+    que exista UNA sola fuente de verdad. Los dos módulos coexisten con campos
+    distintos, y fue precisamente esa duplicación la que dejó divergir la
+    fórmula sin que nada lo notara; `test_consolidacion_una_sola_verdad` lo
+    vigila a partir de ahora.
+    """
+    from foundationdesignjm.analysis.consolidacion_1d import Tv_from_U
+
+    return Tv_from_U(U)
 
 
 def evaluate_consolidation(inp: ConsolidationInput) -> ConsolidationResult:

@@ -92,6 +92,11 @@ def tie_beam_minimum_dimensions(n_storeys_above_basement: int) -> tuple[float, f
     return width, depth
 
 
+#: Coeficiente de NSR-10 A.3.6.4.2. ES ÚNICO: la norma no lo zonifica por
+#: amenaza sísmica. Ver la nota extensa en `design_tie_beam_nsr10`.
+NSR10_TIE_BEAM_FACTOR = 0.25
+
+
 class Nsr10TieBeamResult(BaseModel):
     """Resultado del diseño de viga de amarre según NSR-10 Artículo A.3.6.4.2."""
     code_article: str = "NSR-10 Artículo A.3.6.4.2"
@@ -122,23 +127,42 @@ def design_tie_beam_nsr10(
 ) -> Nsr10TieBeamResult:
     """Diseña viga de amarre según NSR-10 Artículo A.3.6.4.2.
 
-    Fuerza axial normativa:
-        T_u = C_u = 0.25 · Aa · Pu  (en zona de amenaza sísmica alta)
-        T_u = C_u = 0.20 · Aa · Pu  (en zona de amenaza sísmica intermedia)
-        T_u = C_u = 0.15 · Aa · Pu  (en zona de amenaza sísmica baja)
+    Fuerza axial normativa, texto del articulado:
+
+        "...una fuerza no menor de 0,25·A_a veces la carga vertical total del
+        elemento que tenga la mayor carga entre los que interconecta, además de
+        las fuerzas que le transmita la superestructura."
+
+    De donde:
+
+        T_u = C_u = 0.25 · Aa · P
+
+    EL COEFICIENTE NO ESTÁ ZONIFICADO. Una versión anterior de esta función
+    aplicaba 0.25 / 0.20 / 0.15 según amenaza sísmica alta / intermedia / baja.
+    Esa gradación NO EXISTE en NSR-10: A.3.6.4.2 da un coeficiente único, sin
+    zonificación y sin exención para amenaza baja (comprobado también contra
+    A.3.6.5–A.3.6.13 y A.3.7). Los valores 0.20 y 0.15 estaban inventados, y un
+    test los aseveraba como exactos. La gradación de tres niveles que
+    probablemente los inspiró es la de C.15.13.3.1, y es de DIMENSIÓN MÍNIMA
+    según capacidad de disipación (DES L/20, DMO L/30, DMI L/40), no del
+    coeficiente sísmico por zona.
+
+    ``seismic_zone`` se conserva porque se reporta en el resultado, pero NO
+    interviene en el cálculo de la fuerza.
+
+    Parameters
+    ----------
+    Pu_col_max_kN
+        Carga vertical TOTAL (de servicio, NO mayorada) del elemento de
+        cimentación más cargado de los que la viga interconecta. El nombre del
+        parámetro se conserva por compatibilidad, pero la norma no pide una
+        carga mayorada ni se refiere a la columna, sino al elemento de
+        cimentación (zapata, dado, pila o caisson).
     """
     import math
 
-    zone = seismic_zone.lower().strip()
-    if zone in ("alta", "high"):
-        factor = 0.25
-    elif zone in ("intermedia", "medium", "moderate"):
-        factor = 0.20
-    else:
-        factor = 0.15
-
-    # Fuerza axial exacta según NSR-10 Art. A.3.6.4.2
-    T_u_kN = round(factor * Aa * Pu_col_max_kN, 6)
+    # Fuerza axial según NSR-10 A.3.6.4.2: coeficiente único, sin zonificación.
+    T_u_kN = round(NSR10_TIE_BEAM_FACTOR * Aa * Pu_col_max_kN, 6)
     C_u_kN = T_u_kN
 
 
@@ -182,7 +206,13 @@ def design_tie_beam_nsr10(
         n_bars=n_bars,
         bar_diameter_mm=db_mm,
         stirrup_spec=stirrups,
-        note=f"Fuerza axial = {factor:.2f} · Aa · Pu calculada exactamente según NSR-10 A.3.6.4.2.",
+        note=(
+            f"Fuerza axial = {NSR10_TIE_BEAM_FACTOR:.2f} · Aa · P según NSR-10 "
+            f"A.3.6.4.2. El coeficiente es ÚNICO: la norma no lo zonifica por "
+            f"amenaza sísmica, asi que seismic_zone='{seismic_zone}' se reporta "
+            f"pero no interviene. P debe ser la carga vertical TOTAL (no "
+            f"mayorada) del elemento de cimentación más cargado."
+        ),
     )
 
 

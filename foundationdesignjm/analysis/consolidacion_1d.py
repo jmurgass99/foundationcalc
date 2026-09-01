@@ -47,13 +47,18 @@ def U_from_Tv(Tv: float) -> float:
 
 
 def Tv_from_U(U: float) -> float:
+    """Inversa de la curva U-Tv de Terzaghi.
+
+        U <  0.6 :  Tv = (pi/4)·U²
+        U >= 0.6 :  Tv = -(4/pi²)·ln[(1-U)·pi²/8]
+
+    Valores de referencia: Tv50 = 0.196, Tv90 = 0.848.
+    """
     if U <= 0:
         return 0.0
     if U < 0.6:
         return pi / 4.0 * U ** 2
-    return -(4.0 / pi ** 2) * (-pi ** 2 * 0.25) * 1.0 + (
-        (-4.0 / pi ** 2) * (log((1.0 - U) * pi ** 2 / 8.0))
-    ) if False else (-4.0 / pi ** 2) * _safe_log((1.0 - U) * pi ** 2 / 8.0)
+    return (-4.0 / pi ** 2) * _safe_log((1.0 - U) * pi ** 2 / 8.0)
 
 
 def _safe_log(x: float) -> float:

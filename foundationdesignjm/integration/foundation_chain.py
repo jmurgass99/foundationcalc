@@ -22,6 +22,7 @@ from typing import Any, Sequence, Optional
 
 from foundationdesignjm.core.geometry import Column, RectangularFoundation
 from foundationdesignjm.core.material import Concrete, ReinforcingSteel
+from foundationdesignjm.analysis.boussinesq import BoussinesqRect, sigma_z_rect_center
 from foundationdesignjm.consolidacion_1d import ConsolidationInput, evaluate_consolidation
 from foundationdesignjm.design.combined_footing import (
     CombinedFootingInputs,
@@ -140,10 +141,30 @@ def foundation_chain_from_etabs(
         for node_id, summary in design_summary.items():
             n_max = float(summary["N_max_kN"])
             if n_max > 0:
-                # Boussinesq bajo el centro a profundidad media del estrato z = Df + H/2
-                df = float(soil_params.get("founding_depth_m", 1.5))
-                z_mid = df + h_layer / 2.0
-                delta_sigma = (3.0 * n_max) / (2.0 * math.pi * (z_mid ** 2))
+                # Incremento de tension bajo el CENTRO de la zapata rectangular,
+                # por superposicion de los 4 cuadrantes (Newmark/Fadum).
+                #
+                # DEFECTO CORREGIDO, dos errores compuestos que subestimaban el
+                # asentamiento un ~40 %:
+                #   1. Se usaba la solucion de CARGA PUNTUAL 3N/(2*pi*z^2), que
+                #      solo vale para z >~ 2-3B. Aqui z/B ~ 0.67: fuera de rango.
+                #      (El informe la llamaba ademas "bulbo 2:1 / Newmark"; son
+                #      tres metodos distintos y daban 71.1 / 108.4 kPa frente a
+                #      los 53.05 que salian.)
+                #   2. z se media desde la SUPERFICIE del terreno (Df + H/2) en
+                #      vez de desde el plano de aplicacion de la carga, que es la
+                #      base de la zapata. El estrato compresible se situa
+                #      inmediatamente bajo ella, luego z = H/2.
+                #
+                # `sigma_z_rect_center` ya existia en analysis/boussinesq.py y
+                # estaba corregida (commit 684cf78); esto solo la cablea.
+                B_m = float(summary["B_m"])
+                L_m = float(summary["L_m"])
+                qo_kPa = n_max / (B_m * L_m)
+                z_mid = h_layer / 2.0
+                delta_sigma = sigma_z_rect_center(
+                    BoussinesqRect(qo_kPa=qo_kPa, B_m=B_m, L_m=L_m, z_m=z_mid)
+                )
                 c_inp = ConsolidationInput(
                     H_layer_m=h_layer,
                     sigma_v_0_kPa=sigma_v0,

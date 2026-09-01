@@ -302,16 +302,25 @@ def optimize_isolated_footing_discrete_grid(
 
                 # Comprobaciones
                 failures: list[str] = []
-                q_max = res.pressures.get("q_max", 0.0)
+                # Acceso por clave, NO con .get(..., 0.0): un valor ausente se
+                # convertia en 0.0 y por tanto en un estado limite APROBADO
+                # (0 > q_adm es falso, 0 > 1.0 es falso). Si la clave faltase, un
+                # KeyError ruidoso es infinitamente preferible a una zapata que
+                # pasa las comprobaciones por no haberlas hecho. Hoy las tres
+                # ramas de _compute_pressures y _punching_aci318 devuelven
+                # siempre la clave, asi que esto no cambia ningun resultado: lo
+                # que cambia es que dejaria de ser silencioso si algun dia
+                # cambian.
+                q_max = res.pressures["q_max"]
                 if q_max > q_allow_kPa:
                     failures.append(f"Tensión excesiva: q_max={q_max:.1f} > q_adm={q_allow_kPa:.1f} kPa")
 
-                p_dcr = res.punching.get("DCR", 0.0)
+                p_dcr = res.punching["DCR"]
                 if p_dcr > 1.0:
                     failures.append(f"Falla punzonamiento: DCR={p_dcr:.2f} > 1.0")
 
-                as_x = res.flexure_x.get("As_chosen", 0.0)
-                as_y = res.flexure_y.get("As_chosen", 0.0)
+                as_x = res.flexure_x["As_chosen"]
+                as_y = res.flexure_y["As_chosen"]
 
                 # Cómputo de costes
                 vol_conc = lx * ly * h
