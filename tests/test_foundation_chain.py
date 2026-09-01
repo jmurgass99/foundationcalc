@@ -193,12 +193,13 @@ class TestFoundationChain:
 
 
 class TestPunchingApplicability:
-    """Fix del controlador (auditoria AG15): una zapata compacta cuyo perimetro
-    critico a 2d excede la planta NO puede reportarse como PASS con
-    utilization=0 -- EC2 6.4.4(2) exige perimetros a < 2d en ese caso."""
+    """Verificación de punzonamiento en zapatas compactas (EC2 §6.4.4(2)).
+    
+    El caso de zapata compacta donde 2d excede la planta pasa de declararse
+    no aplicable a RESOLVERSE analizando perímetros a < 2d con tau_Rd escalado."""
 
-    def test_compact_footing_reports_not_applicable(self) -> None:
-        """1.2x1.2x0.50 con columna 0.40: A_u1=4.14 m2 > 1.44 m2 -> no aplicable."""
+    def test_compact_footing_resolves_via_reduced_perimeter(self) -> None:
+        """1.2x1.2x0.50 con columna 0.40: A_u1=4.14 m2 > 1.44 m2 -> resuelto vía a < 2d."""
         from foundationdesignjm.core.geometry import Column, RectangularFoundation
         from foundationdesignjm.design.punching_shear import punching_shear_check
 
@@ -211,10 +212,11 @@ class TestPunchingApplicability:
             rho_y=0.005,
             d_eff_m=0.45,
         )
-        assert res.applicable is False
-        assert res.verdict == "NO_APLICABLE_2D"
-        # La fuerza neta se anula geometricamente -- eso es lo que delata el caso
-        assert res.F_sd == 0.0
+        assert res.applicable is True
+        assert res.is_compact is True
+        assert res.verdict == "PASS"
+        assert res.a_crit_m < 2.0 * 0.45
+        assert res.is_ok is True
 
     def test_benchmark_footing_stays_applicable(self) -> None:
         """El benchmark AG13 (2.5x2.5, d=0.55): A_u1=5.72 < 6.25 -> aplicable y PASS."""
@@ -231,11 +233,12 @@ class TestPunchingApplicability:
             d_eff_m=0.55,
         )
         assert res.applicable is True
+        assert res.is_compact is False
         assert res.verdict == "PASS"
         assert res.u1 == pytest.approx(8.5115, rel=1e-3)
 
-    def test_memoria_flags_not_applicable_punching(self) -> None:
-        """La memoria de la cadena marca NO APLICABLE, nunca OK, para el caso compacto."""
+    def test_memoria_reports_compact_footing_punching(self) -> None:
+        """La memoria de la cadena reporta el chequeo EC2 6.4.4(2) para el caso compacto."""
         from jmstructural_common.model import Reaction
         from foundationdesignjm.integration.foundation_chain import foundation_chain_from_etabs, foundation_package
         import tempfile, os
@@ -254,5 +257,4 @@ class TestPunchingApplicability:
                 output_dir=tmp,
             )
             text = pkg.memoria_markdown
-            assert "NO APLICABLE" in text
-            assert "6.4.4" in text
+            assert "6.4" in text
