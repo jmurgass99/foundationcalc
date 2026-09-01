@@ -228,3 +228,141 @@ def _cantilever_flexure(q_kPa: float, width: float, span: float, col: float,
         "As_chosen": As_chosen,                      # mm²
         "bar_spacing": spacing_mm / 1000.0,          # m
     }
+
+
+@dataclass(frozen=True)
+class FootingCandidate:
+    L_x: float
+    L_y: float
+    thickness: float
+    cost_eur: float
+    passes_all: bool
+    q_max_kPa: float
+    q_allow_kPa: float
+    punching_dcr: float
+    flexure_x_As: float
+    flexure_y_As: float
+    failure_reasons: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class FootingOptimizationResult:
+    best_candidate: FootingCandidate
+    all_evaluated_candidates: list[FootingCandidate]
+    total_evaluated: int
+    total_passed: int
+
+
+def optimize_isolated_footing_discrete_grid(
+    N_kN: float,
+    q_allow_kPa: float,
+    M_x_kNm: float = 0.0,
+    M_y_kNm: float = 0.0,
+    column_b: float = 0.40,
+    column_h: float = 0.40,
+    fc_MPa: float = 25.0,
+    fy_MPa: float = 420.0,
+    cover_mm: float = 50.0,
+    L_x_grid: list[float] | None = None,
+    L_y_grid: list[float] | None = None,
+    thickness_grid: list[float] | None = None,
+    unit_cost_concrete_eur_m3: float = 120.0,
+    unit_cost_steel_eur_kg: float = 1.80,
+    unit_cost_formwork_eur_m2: float = 35.0,
+) -> FootingOptimizationResult:
+    """Optimiza zapata aislada barriendo planta y canto en malla discreta al mínimo coste."""
+    import math
+
+    lx_vals = L_x_grid or [1.2, 1.5, 1.8, 2.0, 2.2, 2.5, 2.8, 3.0]
+    ly_vals = L_y_grid or [1.2, 1.5, 1.8, 2.0, 2.2, 2.5, 2.8, 3.0]
+    h_vals = thickness_grid or [0.40, 0.50, 0.60, 0.70, 0.80]
+
+    all_candidates: list[FootingCandidate] = []
+    best_candidate: FootingCandidate | None = None
+    min_cost = float("inf")
+
+    for lx in lx_vals:
+        for ly in ly_vals:
+            for h in h_vals:
+                inp = IsolatedFootingInput(
+                    L_x=lx,
+                    L_y=ly,
+                    thickness=h,
+                    column_b=column_b,
+                    column_h=column_h,
+                    fc_MPa=fc_MPa,
+                    fy_MPa=fy_MPa,
+                    cover_mm=cover_mm,
+                    N=N_kN,
+                    M_x=M_x_kNm,
+                    M_y=M_y_kNm,
+                    q_allow_kPa=q_allow_kPa,
+                )
+                res = design_isolated_footing(inp)
+
+                # Comprobaciones
+                failures: list[str] = []
+                q_max = res.pressures.get("q_max", 0.0)
+                if q_max > q_allow_kPa:
+                    failures.append(f"Tensión excesiva: q_max={q_max:.1f} > q_adm={q_allow_kPa:.1f} kPa")
+
+                p_dcr = res.punching.get("DCR", 0.0)
+                if p_dcr > 1.0:
+                    failures.append(f"Falla punzonamiento: DCR={p_dcr:.2f} > 1.0")
+
+                as_x = res.flexure_x.get("As_chosen", 0.0)
+                as_y = res.flexure_y.get("As_chosen", 0.0)
+
+                # Cómputo de costes
+                vol_conc = lx * ly * h
+                area_form = 2.0 * (lx + ly) * h
+                # Acero en kg con densidad 7850 kg/m³
+                w_steel_kg = ((as_x * 1e-6 * (lx + 0.6)) + (as_y * 1e-6 * (ly + 0.6))) * 7850.0
+
+                cost = (
+                    vol_conc * unit_cost_concrete_eur_m3
+                    + w_steel_kg * unit_cost_steel_eur_kg
+                    + area_form * unit_cost_formwork_eur_m2
+                )
+
+                passes = len(failures) == 0
+                cand = FootingCandidate(
+                    L_x=lx,
+                    L_y=ly,
+                    thickness=h,
+                    cost_eur=cost,
+                    passes_all=passes,
+                    q_max_kPa=q_max,
+                    q_allow_kPa=q_allow_kPa,
+                    punching_dcr=p_dcr,
+                    flexure_x_As=as_x,
+                    flexure_y_As=as_y,
+                    failure_reasons=failures,
+                )
+                all_candidates.append(cand)
+
+                if passes and cost < min_cost:
+                    min_cost = cost
+                    best_candidate = cand
+
+    if best_candidate is None:
+        raise ValueError("Ninguna combinación en la malla discreta satisface los chequeos de diseño.")
+
+    passed_count = sum(1 for c in all_candidates if c.passes_all)
+    return FootingOptimizationResult(
+        best_candidate=best_candidate,
+        all_evaluated_candidates=all_candidates,
+        total_evaluated=len(all_candidates),
+        total_passed=passed_count,
+    )
+
+
+__all__ = [
+    "IsolatedFootingInput",
+    "FootingDesignResult",
+    "FootingCandidate",
+    "FootingOptimizationResult",
+    "design_isolated_footing",
+    "optimize_isolated_footing_discrete_grid",
+]
+

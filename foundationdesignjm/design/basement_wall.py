@@ -331,11 +331,125 @@ class BasementWallDesigner:
         )
 
 
+@dataclass(frozen=True)
+class BasementWallStabilityResult:
+    """Resultado de estabilidad geotécnica de muro de sótano bajo empujes de Rankine o Coulomb."""
+    method: str
+    Ka: float
+    thrust_soil_kN_per_m: float
+    thrust_surcharge_kN_per_m: float
+    total_active_thrust_kN_per_m: float
+    overturning_moment_kNm_per_m: float
+    resisting_moment_kNm_per_m: float
+    driving_shear_kN_per_m: float
+    resisting_friction_kN_per_m: float
+    FS_sliding: float
+    FS_overturning: float
+    is_safe_sliding: bool
+    is_safe_overturning: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "method": self.method,
+            "Ka": self.Ka,
+            "thrust_soil_kN_per_m": self.thrust_soil_kN_per_m,
+            "thrust_surcharge_kN_per_m": self.thrust_surcharge_kN_per_m,
+            "total_active_thrust_kN_per_m": self.total_active_thrust_kN_per_m,
+            "overturning_moment_kNm_per_m": self.overturning_moment_kNm_per_m,
+            "resisting_moment_kNm_per_m": self.resisting_moment_kNm_per_m,
+            "driving_shear_kN_per_m": self.driving_shear_kN_per_m,
+            "resisting_friction_kN_per_m": self.resisting_friction_kN_per_m,
+            "FS_sliding": self.FS_sliding,
+            "FS_overturning": self.FS_overturning,
+            "is_safe_sliding": self.is_safe_sliding,
+            "is_safe_overturning": self.is_safe_overturning,
+        }
+
+
+def evaluate_wall_stability_coulomb_rankine(
+    height_m: float,
+    thickness_m: float,
+    gamma_soil_kN_m3: float,
+    phi_deg: float,
+    surcharge_q_kPa: float = 0.0,
+    N_axial_kN_per_m: float = 0.0,
+    base_width_m: float | None = None,
+    delta_deg: float = 0.0,
+    method: str = "rankine",
+    gamma_concrete_kN_m3: float = 25.0,
+    tan_delta_base: float = 0.50,
+) -> BasementWallStabilityResult:
+    """Evalúa empujes laterales de Rankine o Coulomb y factores de seguridad ante deslizamiento y volcamiento."""
+    method_norm = method.lower().strip()
+    H = height_m
+    B = base_width_m if base_width_m is not None else thickness_m
+
+    if method_norm == "rankine":
+        Ka = math.tan(math.radians(45.0 - phi_deg / 2.0)) ** 2
+        eff_delta = 0.0
+    elif method_norm == "coulomb":
+        # Coulomb activo para muro vertical beta=90, relleno horizontal alpha=0
+        phi_rad = math.radians(phi_deg)
+        delta_rad = math.radians(delta_deg)
+        num = math.cos(phi_rad) ** 2
+        den = math.cos(delta_rad) * (1.0 + math.sqrt(math.sin(phi_rad + delta_rad) * math.sin(phi_rad) / math.cos(delta_rad))) ** 2
+        Ka = num / max(den, 1e-12)
+        eff_delta = delta_deg
+    else:
+        raise ValueError(f"Método '{method}' no soportado. Usar 'rankine' o 'coulomb'.")
+
+    # Empujes de tierra y sobrecarga
+    P_soil = 0.5 * Ka * gamma_soil_kN_m3 * (H ** 2)
+    P_sur = Ka * surcharge_q_kPa * H
+    P_total = P_soil + P_sur
+
+    cos_d = math.cos(math.radians(eff_delta))
+    sin_d = math.sin(math.radians(eff_delta))
+
+    P_h = P_total * cos_d
+    P_v = P_total * sin_d
+
+    # Momentos volcadores respecto a la base/puntera
+    M_ov = (P_soil * cos_d * (H / 3.0)) + (P_sur * cos_d * (H / 2.0))
+
+    # Cargas estabilizadoras
+    W_wall = gamma_concrete_kN_m3 * thickness_m * H
+    V_total = W_wall + N_axial_kN_per_m + P_v
+
+    # Brazo estabilizador
+    x_w = B / 2.0
+    M_res = (W_wall * x_w) + (N_axial_kN_per_m * x_w) + (P_v * B)
+
+    # Factores de seguridad
+    R_friction = V_total * tan_delta_base
+    FS_sl = R_friction / max(P_h, 1e-9)
+    FS_ov = M_res / max(M_ov, 1e-9)
+
+    return BasementWallStabilityResult(
+        method=method_norm,
+        Ka=Ka,
+        thrust_soil_kN_per_m=P_soil,
+        thrust_surcharge_kN_per_m=P_sur,
+        total_active_thrust_kN_per_m=P_total,
+        overturning_moment_kNm_per_m=M_ov,
+        resisting_moment_kNm_per_m=M_res,
+        driving_shear_kN_per_m=P_h,
+        resisting_friction_kN_per_m=R_friction,
+        FS_sliding=FS_sl,
+        FS_overturning=FS_ov,
+        is_safe_sliding=FS_sl >= 1.50,
+        is_safe_overturning=FS_ov >= 1.50,
+    )
+
+
 __all__ = [
     "SupportConfig",
     "PressureDiagram",
     "BasementWallGeometry",
     "BasementWallLoading",
     "BasementWallResult",
+    "BasementWallStabilityResult",
     "BasementWallDesigner",
+    "evaluate_wall_stability_coulomb_rankine",
 ]
+

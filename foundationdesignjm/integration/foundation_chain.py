@@ -22,10 +22,20 @@ from typing import Any, Sequence, Optional
 
 from foundationdesignjm.core.geometry import Column, RectangularFoundation
 from foundationdesignjm.core.material import Concrete, ReinforcingSteel
+from foundationdesignjm.consolidacion_1d import ConsolidationInput, evaluate_consolidation
 from foundationdesignjm.design.combined_footing import (
     CombinedFootingInputs,
     CombinedFootingResult,
     design_combined_footing,
+)
+from foundationdesignjm.design.pile_cap import (
+    cap_two_piles,
+    cap_three_piles,
+    cap_four_piles,
+)
+from foundationdesignjm.pile_capacity_multi import (
+    PileCapacityInput,
+    design_pile_capacity,
 )
 from foundationdesignjm.design.punching_shear import PunchingShearResult, punching_shear_check
 from foundationdesignjm.design.reinforcement import (
@@ -52,6 +62,8 @@ class FoundationChainResult:
     total_concrete_m3: float = 0.0
     has_global_uplift: bool = False
     safe_injection_status: Optional[dict[str, Any]] = None
+    pile_cap_designs: dict[str, Any] = field(default_factory=dict)
+    settlement_results: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -71,6 +83,8 @@ class FoundationPackageResult:
     total_concrete_m3: float = 0.0
     total_steel_kg: float = 0.0
     total_formwork_m2: float = 0.0
+    pile_cap_designs: dict[str, Any] = field(default_factory=dict)
+    settlement_results: dict[str, Any] = field(default_factory=dict)
 
 
 def foundation_chain_from_etabs(
@@ -79,10 +93,15 @@ def foundation_chain_from_etabs(
     *,
     footing_thickness_m: float = 0.50,
     concrete_fck_MPa: float = 30.0,
+    steel_fyk_MPa: float = 500.0,
     column_dimensions: dict[str, tuple[float, float]] | tuple[float, float] = (0.40, 0.40),
     column_coordinates: Optional[dict[str, tuple[float, float]]] = None,
     combos: Optional[list[str]] = None,
     safe_client: Any = None,
+    max_footing_side_m: float = 5.0,
+    min_bearing_capacity_kPa: float = 50.0,
+    pile_design_capacity_kN: float = 600.0,
+    auto_switch_to_piles: bool = True,
 ) -> FoundationChainResult:
     """Ejecuta la cadena de dimensionado y preparación para SAFE 2022."""
     reactions = _resolve_reactions(etabs_or_reactions, combos)
@@ -98,13 +117,42 @@ def foundation_chain_from_etabs(
         size_step_m=float(soil_params.get("size_step_m", 0.05)),
     )
 
-    # 2. Muelles Winkler y Chequeo de Punzonamiento por nudo
+    # 2. Muelles Winkler, Chequeo de Punzonamiento y Cambio Automático a Pilotes
     punching_checks: dict[str, PunchingShearResult] = {}
     winkler_springs: list[WinklerSpring] = []
+    pile_cap_designs: dict[str, Any] = {}
+    settlement_results: dict[str, Any] = {}
     total_vol = 0.0
     has_global_uplift = False
 
     col_coords = column_coordinates or {}
+    steel_mat = ReinforcingSteel(fyk=steel_fyk_MPa)
+
+    # Evaluación de asentamientos si hay estrato compresible
+    if "compressible_layer" in soil_params or "Cc" in soil_params:
+        comp_info = soil_params.get("compressible_layer", soil_params)
+        h_layer = float(comp_info.get("H_layer_m", 3.0))
+        sigma_v0 = float(comp_info.get("sigma_v_0_kPa", 80.0))
+        cc = float(comp_info.get("Cc", 0.25))
+        e0 = float(comp_info.get("e_0", 0.80))
+        cv = float(comp_info.get("cv_m2_per_year", 1.2))
+
+        for node_id, summary in design_summary.items():
+            n_max = float(summary["N_max_kN"])
+            if n_max > 0:
+                # Boussinesq bajo el centro a profundidad media del estrato z = Df + H/2
+                df = float(soil_params.get("founding_depth_m", 1.5))
+                z_mid = df + h_layer / 2.0
+                delta_sigma = (3.0 * n_max) / (2.0 * math.pi * (z_mid ** 2))
+                c_inp = ConsolidationInput(
+                    H_layer_m=h_layer,
+                    sigma_v_0_kPa=sigma_v0,
+                    delta_sigma_kPa=delta_sigma,
+                    Cc=cc,
+                    e_0=e0,
+                    cv_m2_per_year=cv,
+                )
+                settlement_results[node_id] = evaluate_consolidation(c_inp)
 
     for node_id, summary in design_summary.items():
         B = float(summary["B_m"])
@@ -117,6 +165,64 @@ def foundation_chain_from_etabs(
 
         if summary.get("has_uplift"):
             has_global_uplift = True
+
+        n_max = float(summary["N_max_kN"])
+
+        # Auto-switch a pilotes si el lado excede max_footing_side_m o qa_kPa < min_bearing_capacity_kPa
+        switch_needed = False
+        switch_reason = ""
+        if auto_switch_to_piles:
+            if max(B, L) > max_footing_side_m:
+                switch_needed = True
+                switch_reason = f"Lado de zapata requerido ({max(B, L):.2f} m) excede el máximo permitido ({max_footing_side_m:.2f} m)"
+            elif qa_kPa < min_bearing_capacity_kPa:
+                switch_needed = True
+                switch_reason = f"Tensión admisible de suelo ({qa_kPa:.1f} kPa) inferior al mínimo ({min_bearing_capacity_kPa:.1f} kPa)"
+
+        if switch_needed and n_max > 0:
+            summary["foundation_type"] = "pile_cap"
+            summary["switch_reason"] = switch_reason
+            summary["status"] = f"SWITCH_A_PILOTES: {switch_reason}"
+
+            # Dimensionado de encepado (pile cap)
+            n_piles = max(2, math.ceil(n_max / pile_design_capacity_kN))
+            d_mm = max(h - 0.05, 0.40) * 1000.0  # mm
+            a_mm = 400.0  # columna cuadrada 400mm
+            if isinstance(column_dimensions, dict):
+                a_mm = column_dimensions.get(node_id, (0.4, 0.4))[0] * 1000.0
+
+            if n_piles == 2:
+                v_mm = 600.0  # voladizo eje pilote a borde
+                tie_res = cap_two_piles(n_max, v_mm=v_mm, a_mm=a_mm, d_mm=d_mm, steel=steel_mat)
+                pile_cap_designs[node_id] = {
+                    "n_piles": 2,
+                    "pile_capacity_kN": pile_design_capacity_kN,
+                    "tie_result": tie_res,
+                    "switch_reason": switch_reason,
+                }
+            elif n_piles == 3:
+                l_mm = 1500.0  # lado triangulo pilotes
+                tie_res = cap_three_piles(n_max, l_mm=l_mm, a_mm=a_mm, d_mm=d_mm, steel=steel_mat)
+                pile_cap_designs[node_id] = {
+                    "n_piles": 3,
+                    "pile_capacity_kN": pile_design_capacity_kN,
+                    "tie_result": tie_res,
+                    "switch_reason": switch_reason,
+                }
+            else:
+                l1_mm = 1500.0
+                l2_mm = 1500.0
+                r1, r2 = cap_four_piles(n_max, l1_mm=l1_mm, l2_mm=l2_mm, a1_mm=a_mm, a2_mm=a_mm, d_mm=d_mm, steel=steel_mat)
+                pile_cap_designs[node_id] = {
+                    "n_piles": 4,
+                    "pile_capacity_kN": pile_design_capacity_kN,
+                    "tie_result_x": r1,
+                    "tie_result_y": r2,
+                    "switch_reason": switch_reason,
+                }
+        else:
+            summary["foundation_type"] = "isolated_footing"
+            summary["switch_reason"] = "Zapata aislada directa dentro de límites"
 
         # Muelle Winkler vertical: Kz = ks * Area
         area_m2 = B * L
@@ -132,7 +238,6 @@ def foundation_chain_from_etabs(
             cx, cy = column_dimensions
 
         # Punzonamiento bajo la mayor compresión de diseño (ELU)
-        n_max = float(summary["N_max_kN"])
         if n_max > 0:
             footing_geom = RectangularFoundation(
                 length=L * 1000.0,
@@ -173,30 +278,30 @@ def foundation_chain_from_etabs(
             (cx_mid - dx, cy_mid + dy),
         ]
         footing_specs.append({
-            "name": f"FOOTING_{node_id}",
-            "node_id": node_id,
+            "name": f"ZAPATA_{node_id}",
+            "joint_name": node_id,
             "coordinates": poly,
             "thickness": footing_thickness_m,
-            "material": "CONC",
+            "material": f"HA_{int(concrete_fck_MPa)}",
             "subgrade_modulus_ks": ks_kN_m3,
         })
 
-    column_loads = []
-    for rx in reactions:
-        column_loads.append({
+    column_loads = [
+        {
             "point_name": rx.node_id,
             "case": rx.case,
             "P": rx.fz_kN,
-            "Vx": rx.fx_kN,
-            "Vy": rx.fy_kN,
             "Mx": rx.mx_kNm,
             "My": rx.my_kNm,
+            "Vx": rx.fx_kN,
+            "Vy": rx.fy_kN,
             "Mz": rx.mz_kNm,
-        })
+        }
+        for rx in reactions
+    ]
 
     safe_model_spec = {
         "footings": footing_specs,
-        "soil_subgrade_modulus_ks": ks_kN_m3,
         "column_loads": column_loads,
         "n_footings": len(footing_specs),
         "n_loads": len(column_loads),
@@ -252,6 +357,8 @@ def foundation_chain_from_etabs(
         total_concrete_m3=total_vol,
         has_global_uplift=has_global_uplift,
         safe_injection_status=injection_status,
+        pile_cap_designs=pile_cap_designs,
+        settlement_results=settlement_results,
     )
 
 
@@ -270,18 +377,22 @@ def foundation_package(
     output_dir: Optional[str | Path] = None,
     project_name: str = "PROYECTO ESTRUCTURAL",
     engineer_name: str = "INGENIERO RESPONSABLE",
+    max_footing_side_m: float = 5.0,
+    min_bearing_capacity_kPa: float = 50.0,
+    pile_design_capacity_kN: float = 600.0,
+    substitute_overlapping_footings: bool = True,
 ) -> FoundationPackageResult:
     """Genera el paquete completo de entregables de producción para cimentaciones.
 
     Incluye:
-    - Dimensionado geotécnico en planta.
-    - Detección y diseño de zapatas combinadas ante solapes.
+    - Dimensionado geotécnico en planta con auto-switch a pilotes si aplica.
+    - Detección y sustitución de zapatas combinadas ante solapes geométricos reales.
+    - Asentamientos elásticos / consolidación 1D (Boussinesq + Terzaghi) si hay estrato compresible.
     - Armado a flexión en 2 direcciones (EC2 §9.2 / §9.8, anclaje EC2 §8.4.4).
     - Verificación a punzonamiento (EC2 §6.4).
     - Planos de detalle DXF por zapata.
     - Memoria de cálculo técnica en Markdown.
     - Cómputo métrico (hormigón m³, acero kg, encofrado m²).
-    - Modelo SAFE 2022 declarativo.
     """
     reactions = _resolve_reactions(etabs_or_reactions, combos)
     col_coords = column_coordinates or {rx.node_id: (0.0, 0.0) for rx in reactions}
@@ -292,9 +403,13 @@ def foundation_package(
         soil_params=soil_params,
         footing_thickness_m=footing_thickness_m,
         concrete_fck_MPa=concrete_fck_MPa,
+        steel_fyk_MPa=steel_fyk_MPa,
         column_dimensions=column_dimensions,
         column_coordinates=col_coords,
         combos=combos,
+        max_footing_side_m=max_footing_side_m,
+        min_bearing_capacity_kPa=min_bearing_capacity_kPa,
+        pile_design_capacity_kN=pile_design_capacity_kN,
     )
 
     concrete = Concrete(fck=concrete_fck_MPa)
@@ -302,7 +417,7 @@ def foundation_package(
 
     # 2. Detección de zapatas combinadas por solape
     qa_kPa = float(soil_params.get("allowable_bearing_kPa", 200.0))
-    combined_footings = _detect_and_design_combined_footings(
+    combined_footings, replaced_pairs = _detect_and_design_combined_footings(
         chain.design_summary,
         col_coords,
         column_dimensions,
@@ -311,6 +426,28 @@ def foundation_package(
         concrete,
         steel,
     )
+
+    # Si se activa la sustitución, reemplazar los pares de zapatas aisladas por la combinada
+    if substitute_overlapping_footings and replaced_pairs:
+        for (n1, n2), cf in zip(replaced_pairs, combined_footings):
+            comb_id = f"COMB_{n1}_{n2}"
+            p1 = float(chain.design_summary.get(n1, {}).get("N_max_kN", 0.0))
+            p2 = float(chain.design_summary.get(n2, {}).get("N_max_kN", 0.0))
+            chain.design_summary.pop(n1, None)
+            chain.design_summary.pop(n2, None)
+            chain.design_summary[comb_id] = {
+                "B_m": cf.B_m,
+                "L_m": cf.L_m,
+                "thickness_m": footing_thickness_m,
+                "N_max_kN": p1 + p2,
+                "q_act_kPa": (p1 + p2) / max(cf.L_m * cf.B_m, 1e-4),
+                "qa_kPa": qa_kPa,
+                "status": "OK (ZAPATA COMBINADA POR SOLAPE)",
+                "has_uplift": False,
+                "is_combined": True,
+                "combined_nodes": [n1, n2],
+                "foundation_type": "combined_footing",
+            }
 
     # 3. Armado por flexión en 2 direcciones por zapata
     flexure_rebar: dict[str, dict[str, FootingFlexureDetail]] = {}
@@ -324,6 +461,10 @@ def foundation_package(
         out_path_dir.mkdir(parents=True, exist_ok=True)
 
     for node_id, summary in chain.design_summary.items():
+        # Saltarse punzonamiento/flexión si es encepado
+        if summary.get("foundation_type") == "pile_cap":
+            continue
+
         B = float(summary["B_m"])
         L = float(summary["L_m"])
         h = footing_thickness_m
@@ -410,6 +551,8 @@ def foundation_package(
         punching_checks=chain.punching_checks,
         combined_footings=combined_footings,
         quantities=quantities_dict,
+        pile_cap_designs=chain.pile_cap_designs,
+        settlement_results=chain.settlement_results,
     )
 
     if out_path_dir:
@@ -430,6 +573,8 @@ def foundation_package(
         total_concrete_m3=total_concrete_m3,
         total_steel_kg=total_steel_kg,
         total_formwork_m2=total_formwork_m2,
+        pile_cap_designs=chain.pile_cap_designs,
+        settlement_results=chain.settlement_results,
     )
 
 
@@ -451,28 +596,33 @@ def _resolve_reactions(etabs_or_reactions: Any, combos: Optional[list[str]] = No
                 )
                 for r in etabs_or_reactions
             ]
-        else:
+        elif len(etabs_or_reactions) > 0 and isinstance(etabs_or_reactions[0], Reaction):
             reactions = list(etabs_or_reactions)
+        else:
+            reactions = []
     else:
-        raise TypeError(f"Tipo no soportado para etabs_or_reactions: {type(etabs_or_reactions)}")
+        reactions = []
 
-    if combos:
-        reactions = [r for r in reactions if r.case in combos]
+    if combos is not None:
+        combos_set = set(combos)
+        reactions = [r for r in reactions if r.case in combos_set]
+
     return reactions
 
 
 def _detect_and_design_combined_footings(
     design_summary: dict[str, dict[str, Any]],
     col_coords: dict[str, tuple[float, float]],
-    column_dimensions: dict[str, tuple[float, float]] | tuple[float, float],
+    column_dimensions: Any,
     qa_kPa: float,
     footing_thickness_m: float,
     concrete: Concrete,
     steel: ReinforcingSteel,
     clearance_min_m: float = 0.10,
-) -> list[CombinedFootingResult]:
+) -> tuple[list[CombinedFootingResult], list[tuple[str, str]]]:
     """Detecta solapes entre pares de zapatas aisladas y diseña zapatas combinadas."""
     combined_results: list[CombinedFootingResult] = []
+    replaced_pairs: list[tuple[str, str]] = []
     nodes = list(design_summary.keys())
 
     for i in range(len(nodes)):
@@ -513,7 +663,8 @@ def _detect_and_design_combined_footings(
                     )
                     res = design_combined_footing(inp, concrete, steel)
                     combined_results.append(res)
-    return combined_results
+                    replaced_pairs.append((n1, n2))
+    return combined_results, replaced_pairs
 
 
 def _generate_memoria_markdown(
@@ -528,6 +679,8 @@ def _generate_memoria_markdown(
     punching_checks: dict[str, PunchingShearResult],
     combined_footings: list[CombinedFootingResult],
     quantities: dict[str, Any],
+    pile_cap_designs: Optional[dict[str, Any]] = None,
+    settlement_results: Optional[dict[str, Any]] = None,
 ) -> str:
     """Genera memoria de cálculo técnica en formato Markdown estructurado."""
     qa = float(soil_params.get("allowable_bearing_kPa", 200.0))
@@ -546,7 +699,7 @@ def _generate_memoria_markdown(
         f"- **Módulo de Reacción del Suelo (Balasto):** $k_s = {ks:.1f}\\text{{ kN/m}}^3$\n",
         f"## 2. Reacciones en Base de Pilares (ETABS)",
         f"| Nudo | Hipótesis / Combo | $F_x$ (kN) | $F_y$ (kN) | $F_z$ (kN) | $M_x$ (kNm) | $M_y$ (kNm) |",
-        f"| :--- | :--- | :---: | :---: | :---: | :---: | :---: |",
+        f"| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
 
     for rx in reactions:
@@ -554,15 +707,45 @@ def _generate_memoria_markdown(
 
     lines.extend([
         f"\n## 3. Dimensionado Geotécnico en Planta",
-        f"| Nudo | $B$ (m) | $L$ (m) | $h$ (m) | $N_{{max}}$ (kN) | $\\sigma_{{act}}$ (kPa) | $\\sigma_{{adm}}$ (kPa) | Uplift | Estado |",
-        f"| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
+        f"| Nudo | $B$ (m) | $L$ (m) | $h$ (m) | $N_{{max}}$ (kN) | $\\sigma_{{act}}$ (kPa) | $\\sigma_{{adm}}$ (kPa) | Uplift | Tipo Cimentación | Estado |",
+        f"| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
     ])
 
     for nid, ds in design_summary.items():
         uplift_str = "SÍ" if ds.get("has_uplift") else "NO"
+        ftype = ds.get("foundation_type", "isolated_footing")
         lines.append(
-            f"| `{nid}` | {ds['B_m']:.2f} | {ds['L_m']:.2f} | {ds['thickness_m']:.2f} | {ds['N_max_kN']:.2f} | {ds['q_act_kPa']:.1f} | {ds['qa_kPa']:.1f} | {uplift_str} | **{ds['status']}** |"
+            f"| `{nid}` | {ds['B_m']:.2f} | {ds['L_m']:.2f} | {ds['thickness_m']:.2f} | {ds['N_max_kN']:.2f} | {ds['q_act_kPa']:.1f} | {ds['qa_kPa']:.1f} | {uplift_str} | {ftype} | **{ds['status']}** |"
         )
+
+    # Sección de encepados si hubo auto-switch a pilotes
+    if pile_cap_designs:
+        lines.extend([
+            f"\n## 3.1 Cambio Automático a Pilotes (Encepados)",
+            f"| Nudo | Criterio de Cambio Declarado | Nº Pilotes | Capacidad Pilote (kN) | Armadura Tirante $A_s$ (mm²) |",
+            f"| :--- | :--- | :---: | :---: | :---: |",
+        ])
+        for nid, pcap in pile_cap_designs.items():
+            np = pcap.get("n_piles", 0)
+            pcap_kn = pcap.get("pile_capacity_kN", 0.0)
+            s_reason = pcap.get("switch_reason", "")
+            if "tie_result" in pcap:
+                as_mm2 = pcap["tie_result"].A_s
+            elif "tie_result_x" in pcap:
+                as_mm2 = pcap["tie_result_x"].A_s + pcap["tie_result_y"].A_s
+            else:
+                as_mm2 = 0.0
+            lines.append(f"| `{nid}` | {s_reason} | {np} | {pcap_kn:.1f} | {as_mm2:.1f} |")
+
+    # Sección de Asentamientos
+    if settlement_results:
+        lines.extend([
+            f"\n## 3.2 Asentamiento por Consolidación 1D (Terzaghi + Boussinesq)",
+            f"| Nudo | Asentamiento Primario $S_c$ (mm) | $t_{{50\\%}}$ (días) | $t_{{90\\%}}$ (días) |",
+            f"| :--- | :---: | :---: | :---: |",
+        ])
+        for nid, sres in settlement_results.items():
+            lines.append(f"| `{nid}` | **{sres.Sc_mm:.2f}** | {sres.t_50pct_days:.1f} | {sres.t_90pct_days:.1f} |")
 
     lines.extend([
         f"\n## 4. Armado por Flexión (Eurocódigo 2 §9.2 / §9.8)",
