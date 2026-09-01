@@ -36,19 +36,34 @@ def sigma_z_point(p: BoussinesqPoint) -> float:
 def influence_corner(B: float, L: float, z: float) -> float:
     """Factor de influencia I bajo la esquina de un rectangulo cargado uniformemente
     (Fadum 1948 / Newmark). sigma_z = qo * I.
+
+    Con m = B/z, n = L/z, V = m^2 + n^2 + 1, V1 = m^2*n^2:
+
+        I = 1/(4*pi) * [ 2*m*n*sqrt(V)/(V + V1) * (V + 1)/V
+                         + arctan( 2*m*n*sqrt(V)/(V - V1) ) ]
+
+    El arctan debe ser positivo: si (V - V1) < 0 se suma pi.
+
+    NOTA (correccion): la version anterior de esta funcion usaba (V + V1) como
+    denominador del segundo factor del primer termino y como argumento del
+    arctan (en vez de V y (V - V1) respectivamente). Daba I(1,1) = 0.1257
+    frente al valor publicado 0.1752 (-28%). Coincide ahora con
+    `analysis.stress.newmark_influence_factor`, que ya era correcta.
     """
     m = B / z
     n = L / z
     V = m * m + n * n + 1
     V1 = m * m * n * n
-    A = (2 * m * n * sqrt(V)) / (V + V1)
-    B_term = (V + 1) / (V + V1)
-    # term2 segun signo
-    if V - V1 >= 0:
-        ang = atan(A)
+    num = 2 * m * n * sqrt(V)
+    term1 = num / (V + V1) * (V + 1) / V
+    den2 = V - V1
+    if den2 == 0:
+        ang = pi / 2.0          # limite: arctan(+inf)
+    elif den2 > 0:
+        ang = atan(num / den2)
     else:
-        ang = atan(A) + pi
-    return (1.0 / (4 * pi)) * (A * B_term + ang)
+        ang = atan(num / den2) + pi
+    return (1.0 / (4 * pi)) * (term1 + ang)
 
 
 def sigma_z_rect_center(r: BoussinesqRect) -> float:
