@@ -111,7 +111,17 @@ def punching_shear_check(
         F_sd = N_sd_kN * (A_footing - A_u1) / A_footing
         F_sd = max(F_sd, 0.0)
         F_sd_ef = beta * F_sd
-        tau_sd = F_sd_ef / (u1 * d) if u1 * d > 0 else 0.0
+        # DEFECTO CORREGIDO: aqui habia `... if u1 * d > 0 else 0.0`. Con la
+        # guarda fallando, la tension ACTUANTE colapsaba a 0.0, la utilizacion
+        # salia 0 y el veredicto PASS: la geometria degenerada aprobaba el
+        # punzonamiento por no haberlo comprobado. Es tambien la razon de que
+        # el mutante `u1 * d > 0` -> `< 0` sobreviviera a toda la suite.
+        if u1 * d <= 0:
+            raise ValueError(
+                f"perimetro de control degenerado: u1 = {u1:.6f} m, d = {d:.6f} m. "
+                f"Sin area de control no hay tension de punzonamiento que calcular."
+            )
+        tau_sd = F_sd_ef / (u1 * d)
         utilization = tau_sd / tau_rd_kPa if tau_rd_kPa > 0 else float("inf")
 
         return PunchingShearResult(

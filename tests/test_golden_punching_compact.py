@@ -7,7 +7,7 @@ Fuente: Eurocódigo 2 EN 1992-1-1 §6.4.4(2) + Derivación analítica en docstri
 
 Caso de zapata compacta:
 - Dimensiones zapata: B = 1.40 m (1400 mm), L = 1.40 m (1400 mm), H = 0.50 m (500 mm) -> A_footing = 1.96 m²
-- Soporte: c1 = 400 mm (0.40 m), c2 = 400 mm (0.40 m), pos_x = 700 mm, pos_y = 700 mm (centrado, beta = 1.0)
+- Soporte: c1 = 400 mm (0.40 m), c2 = 400 mm (0.40 m), pos_x = 700 mm, pos_y = 700 mm (centrado -> soporte INTERIOR, beta = 1.15 segun EC2 §6.4.3(6))
 - Canto útil: d = 0.45 m -> 2d = 0.90 m
 - Distancia cara soporte a borde zapata: (1.40 - 0.40)/2 = 0.50 m < 2d (0.90 m)
 - Parámetros de materiales: fck = 25.0 MPa, rho_x = rho_y = 0.005, gamma_c = 1.5
@@ -82,6 +82,26 @@ def test_golden_punching_shear_compact_ec2():
     # 4. Comprobar que la resistencia escalada tau_rd_scaled es mayor que la base gracias a (2d/a)
     assert res.tau_rd_scaled_kPa > res.tau_rd
 
-    # 5. Comprobar ratio de utilización de punzonamiento en el entorno esperado (~0.15 - 0.16)
-    assert res.utilization == pytest.approx(0.154, abs=0.03)
+    # 5. Utilizacion.
+    #
+    # DEFECTO CORREGIDO. Aqui habia `approx(0.154, abs=0.03)`, que acepta la banda
+    # [0.124, 0.184]. El valor REAL es 0.179032, un 16 % por encima del 0.1544 que
+    # el docstring derivaba — y la tolerancia lo tapaba. La causa: el docstring
+    # derivaba la cadena con beta = 1.0, pero `Column.punching_beta` devuelve 1.15
+    # para soporte interior (EC2 §6.4.3(6)), que es lo que este caso es.
+    #
+    # Es el mismo patron que un test cuyo comentario calculaba 12 circulos junto a
+    # un `assert len(circles) > 0`: la derivacion y la asercion no hablaban del
+    # mismo numero, y la holgura lo hacia invisible.
+    #
+    # Lo que se asevera ahora, separando lo que es golden de lo que no:
+    #   - La IDENTIDAD eta = tau_sd / tau_rd_scaled es cerrada y exacta.
+    #   - El VALOR 0.179032 depende de a_crit, que sale de un barrido discreto de
+    #     40 puntos: es detalle de implementacion, no norma. Se fija con tolerancia
+    #     estrecha como CARACTERIZACION y se dice aqui que lo es.
+    assert res.utilization == pytest.approx(
+        res.tau_sd / res.tau_rd_scaled_kPa, rel=1e-12
+    ), "la utilizacion debe ser exactamente tau_sd / tau_rd_scaled"
+    assert res.tau_sd == pytest.approx(339.95096450, rel=1e-9)  # caracterizacion
+    assert res.utilization == pytest.approx(0.179032, rel=1e-5)  # caracterizacion
     assert res.is_ok is True
