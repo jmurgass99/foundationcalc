@@ -190,3 +190,204 @@ def punching_shear_check(
             is_compact=True,
             tau_rd_scaled_kPa=float(tau_rd_scaled),
         )
+
+
+# ===========================================================================
+# ACI 318-19 Punching Shear with Unbalanced Moment Transfer (§8.4.4 & §22.6)
+# ===========================================================================
+
+class AciPunchingShearResult(BaseModel):
+    """Result of ACI 318-19 two-way shear (punching) check with moment transfer."""
+
+    b0_mm: float = Field(..., description="Critical perimeter b0 at d/2 from column face (mm)")
+    Ac_mm2: float = Field(..., description="Critical section area Ac = b0 * d (mm²)")
+    Vu_kN: float = Field(..., description="Factored vertical punching shear force (kN)")
+    Mux_kNm: float = Field(0.0, description="Factored unbalanced moment about X-axis (kNm)")
+    Muy_kNm: float = Field(0.0, description="Factored unbalanced moment about Y-axis (kNm)")
+    gamma_vx: float = Field(..., description="Fraction of Mux transferred by eccentric shear (ACI §8.4.4.2.2)")
+    gamma_vy: float = Field(..., description="Fraction of Muy transferred by eccentric shear (ACI §8.4.4.2.2)")
+    Jcx_mm4: float = Field(..., description="Polar property Jc of critical perimeter for flexure about X (mm⁴)")
+    Jcy_mm4: float = Field(..., description="Polar property Jc of critical perimeter for flexure about Y (mm⁴)")
+    v_dir_MPa: float = Field(..., description="Direct shear stress Vu / Ac (MPa)")
+    v_mom_x_MPa: float = Field(0.0, description="Eccentric shear stress due to Mux (MPa)")
+    v_mom_y_MPa: float = Field(0.0, description="Eccentric shear stress due to Muy (MPa)")
+    v_ug_max_MPa: float = Field(..., description="Maximum factored shear stress on critical perimeter (MPa)")
+    v_ug_min_MPa: float = Field(..., description="Minimum factored shear stress on critical perimeter (MPa)")
+    vc_MPa: float = Field(..., description="Nominal two-way shear strength (ACI 318-19 §22.6.5.2) (MPa)")
+    phi_vc_MPa: float = Field(..., description="Design shear strength phi * vc with phi = 0.75 (MPa)")
+    phi: float = Field(0.75, description="Strength reduction factor (ACI 318-19 Table 21.2.1)")
+    utilization: float = Field(..., description="DCR = v_ug_max / phi_vc")
+    column_type: str = Field("interior", description="Column position: 'interior', 'edge', 'corner'")
+    lambda_s: float = Field(1.0, description="Size effect factor (ACI 318-19 §22.5.5.1.3)")
+
+    @property
+    def is_ok(self) -> bool:
+        return self.utilization <= 1.0
+
+
+def punching_shear_aci318_check(
+    c1_mm: float,
+    c2_mm: float,
+    d_eff_mm: float,
+    Vu_kN: float,
+    fc_MPa: float,
+    Mux_kNm: float = 0.0,
+    Muy_kNm: float = 0.0,
+    column_type: str = "interior",
+    phi: float = 0.75,
+    lambda_conc: float = 1.0,
+) -> AciPunchingShearResult:
+    """Punching shear check per ACI 318-19 §8.4.4.2 and §22.6.
+
+    Calculates maximum two-way shear stress v_ug on the critical perimeter at
+    d/2 from the column face, combining direct shear and eccentric shear from
+    unbalanced moments:
+
+        v_ug = Vu / Ac + gamma_vx * Mux * cy / Jcx + gamma_vy * Muy * cx / Jcy
+
+    Args:
+        c1_mm: Column dimension along X (mm).
+        c2_mm: Column dimension along Y (mm).
+        d_eff_mm: Effective depth of slab / footing (mm).
+        Vu_kN: Factored vertical shear load (kN).
+        fc_MPa: Concrete compressive cylinder strength f'c (MPa).
+        Mux_kNm: Factored unbalanced moment about X-axis causing shear along Y (kNm).
+        Muy_kNm: Factored unbalanced moment about Y-axis causing shear along X (kNm).
+        column_type: 'interior', 'edge', or 'corner'.
+        phi: Strength reduction factor (default 0.75 per Table 21.2.1).
+        lambda_conc: Lightweight modification factor (1.0 for normal weight).
+    """
+    if c1_mm <= 0 or c2_mm <= 0 or d_eff_mm <= 0:
+        raise ValueError("Column dimensions and effective depth must be positive.")
+    if fc_MPa <= 0:
+        raise ValueError("Concrete strength f'c must be positive.")
+
+    col_type = column_type.lower().strip()
+    if col_type not in ("interior", "edge", "corner"):
+        raise ValueError(f"Unknown column_type '{column_type}'. Must be 'interior', 'edge', or 'corner'.")
+
+    d = d_eff_mm
+    Vu_N = Vu_kN * 1000.0
+    Mux_Nmm = Mux_kNm * 1e6
+    Muy_Nmm = Muy_kNm * 1e6
+
+    # 1. Critical perimeter dimensions at d/2 from column faces
+    if col_type == "interior":
+        bx = c1_mm + d
+        by = c2_mm + d
+        b0 = 2.0 * (bx + by)
+        Ac = b0 * d
+        # Flexure about X (transfers shear in Y direction, b1=by, b2=bx)
+        gamma_fx = 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(by / bx))
+        gamma_vx = 1.0 - gamma_fx
+        cy = by / 2.0
+        Jcx = (d * by**3) / 6.0 + (by * d**3) / 6.0 + (d * bx * by**2) / 2.0
+
+        # Flexure about Y (transfers shear in X direction, b1=bx, b2=by)
+        gamma_fy = 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(bx / by))
+        gamma_vy = 1.0 - gamma_fy
+        cx = bx / 2.0
+        Jcy = (d * bx**3) / 6.0 + (bx * d**3) / 6.0 + (d * by * bx**2) / 2.0
+
+    elif col_type == "edge":
+        # Free edge normal to X axis
+        bx = c1_mm + d / 2.0  # two sides normal to edge
+        by = c2_mm + d        # one side parallel to edge
+        b0 = 2.0 * bx + by
+        Ac = b0 * d
+
+        # Flexure about Y (normal to edge, non-symmetric along X)
+        gamma_fy = 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(bx / by))
+        gamma_vy = 1.0 - gamma_fy
+        cx_AB = (bx**2) / b0
+        cx = max(cx_AB, bx - cx_AB)
+        Jcy = (
+            2.0 * ((d * bx**3) / 12.0 + (bx * d) * (bx / 2.0 - cx_AB) ** 2)
+            + (by * d) * (cx_AB**2)
+            + (by * d**3) / 12.0
+        )
+
+        # Flexure about X (parallel to edge, symmetric along Y)
+        gamma_fx = 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(by / bx))
+        gamma_vx = 1.0 - gamma_fx
+        cy = by / 2.0
+        Jcx = (d * by**3) / 12.0 + 2.0 * (bx * d) * (by / 2.0) ** 2 + (bx * d**3) / 6.0
+
+    else:  # corner
+        bx = c1_mm + d / 2.0
+        by = c2_mm + d / 2.0
+        b0 = bx + by
+        Ac = b0 * d
+
+        # Flexure about Y
+        gamma_fy = 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(bx / by))
+        gamma_vy = 1.0 - gamma_fy
+        cx_AB = (bx**2) / (2.0 * b0)
+        cx = max(cx_AB, bx - cx_AB)
+        Jcy = (
+            (d * bx**3) / 12.0
+            + (bx * d) * (bx / 2.0 - cx_AB) ** 2
+            + (by * d) * (cx_AB**2)
+            + (by * d**3) / 12.0
+        )
+
+        # Flexure about X
+        gamma_fx = 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(by / bx))
+        gamma_vx = 1.0 - gamma_fx
+        cy_AB = (by**2) / (2.0 * b0)
+        cy = max(cy_AB, by - cy_AB)
+        Jcx = (
+            (d * by**3) / 12.0
+            + (by * d) * (by / 2.0 - cy_AB) ** 2
+            + (bx * d) * (cy_AB**2)
+            + (bx * d**3) / 12.0
+        )
+
+    # 2. Shear stresses (MPa = N/mm²)
+    v_dir = Vu_N / Ac if Ac > 0 else 0.0
+    v_mom_x = (gamma_vx * abs(Mux_Nmm) * cy) / Jcx if Jcx > 0 else 0.0
+    v_mom_y = (gamma_vy * abs(Muy_Nmm) * cx) / Jcy if Jcy > 0 else 0.0
+
+    v_ug_max = v_dir + v_mom_x + v_mom_y
+    v_ug_min = v_dir - v_mom_x - v_mom_y
+
+    # 3. Two-way shear concrete strength per ACI 318-19 §22.6.5.2
+    sqrt_fc = math.sqrt(fc_MPa)
+    lambda_s = min(math.sqrt(2.0 / (1.0 + 0.004 * d)), 1.0)
+    beta_c = max(c1_mm, c2_mm) / min(c1_mm, c2_mm)
+
+    alpha_s = 40.0 if col_type == "interior" else (30.0 if col_type == "edge" else 20.0)
+
+    vc_1 = 0.33 * lambda_s * lambda_conc * sqrt_fc
+    vc_2 = 0.17 * (1.0 + 2.0 / beta_c) * lambda_s * lambda_conc * sqrt_fc
+    vc_3 = 0.083 * (2.0 + (alpha_s * d) / b0) * lambda_s * lambda_conc * sqrt_fc
+    vc = min(vc_1, vc_2, vc_3)
+    phi_vc = phi * vc
+
+    if phi_vc <= 0.0:
+        util = float("inf") if v_ug_max > 0.0 else 0.0
+    else:
+        util = v_ug_max / phi_vc
+
+    return AciPunchingShearResult(
+        b0_mm=b0,
+        Ac_mm2=Ac,
+        Vu_kN=Vu_kN,
+        Mux_kNm=Mux_kNm,
+        Muy_kNm=Muy_kNm,
+        gamma_vx=gamma_vx,
+        gamma_vy=gamma_vy,
+        Jcx_mm4=Jcx,
+        Jcy_mm4=Jcy,
+        v_dir_MPa=v_dir,
+        v_mom_x_MPa=v_mom_x,
+        v_mom_y_MPa=v_mom_y,
+        v_ug_max_MPa=v_ug_max,
+        v_ug_min_MPa=v_ug_min,
+        vc_MPa=vc,
+        phi_vc_MPa=phi_vc,
+        phi=phi,
+        utilization=util,
+        column_type=col_type,
+        lambda_s=lambda_s,
+    )

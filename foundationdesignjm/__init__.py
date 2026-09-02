@@ -112,7 +112,12 @@ from .design.pile_cap import (
     distribute_forces_rigid_cap,
     pile_cap_secondary_vertical,
 )
-from .design.punching_shear import PunchingShearResult, punching_shear_check
+from .design.punching_shear import (
+    AciPunchingShearResult,
+    PunchingShearResult,
+    punching_shear_aci318_check,
+    punching_shear_check,
+)
 from .design.reinforcement import (
     ReinforcementResult,
     critical_section_offset,
@@ -169,7 +174,7 @@ __all__ = [
     # Design
     "PileCapTieResult", "cap_four_piles", "cap_three_piles", "cap_two_piles",
     "distribute_forces_rigid_cap", "pile_cap_secondary_vertical",
-    "PunchingShearResult", "punching_shear_check",
+    "AciPunchingShearResult", "PunchingShearResult", "punching_shear_aci318_check", "punching_shear_check",
     "ReinforcementResult", "critical_section_offset",
     "flexural_reinforcement", "reinforcement_distribution_rectangular_footing",
     "strut_and_tie_rigid_footing",

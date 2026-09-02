@@ -80,7 +80,12 @@ from .strengthening import (
     micropile_capacity,
     micropile_group_capacity,
 )
-from .punching_shear import PunchingShearResult, punching_shear_check
+from .punching_shear import (
+    AciPunchingShearResult,
+    PunchingShearResult,
+    punching_shear_aci318_check,
+    punching_shear_check,
+)
 from .reinforcement import (
     ReinforcementResult,
     critical_section_offset,
