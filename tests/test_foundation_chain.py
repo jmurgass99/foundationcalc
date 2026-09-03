@@ -147,14 +147,17 @@ class TestFoundationChain:
         assert len(res.winkler_springs) == 2
         assert len(res.punching_checks) == 2
 
-        # Sizing de C1: sqrt(500/250) = sqrt(2) = 1.414 -> 1.45 m
-        assert res.design_summary["C1"]["B_m"] == pytest.approx(1.45)
-        # Sizing de C2: sqrt(750/250) = sqrt(3) = 1.732 -> 1.75 m
-        assert res.design_summary["C2"]["B_m"] == pytest.approx(1.75)
+        # Sizing de C1: N=500 con mx=20/my=15 induce excentricidad, y el
+        # dimensionador la cuenta vía área efectiva de Meyerhof. Ya NO es el axial
+        # puro sqrt(500/250)=1.414->1.45 (que ignoraba los momentos que este mismo
+        # test pasa): el valor honesto es 1.50 m, con hundimiento gobernando.
+        assert res.design_summary["C1"]["B_m"] == pytest.approx(1.50)
+        # Sizing de C2: N=750 con mx=30/my=25 -> 1.85 m (no el axial 1.732->1.75).
+        assert res.design_summary["C2"]["B_m"] == pytest.approx(1.85)
 
-        # Muelles Winkler
+        # Muelles Winkler (kz = ks · B², con la B honesta ya dimensionada)
         s_c1 = next(s for s in res.winkler_springs if s.joint_name == "C1")
-        expected_kz_c1 = 50000.0 * (1.45 * 1.45)
+        expected_kz_c1 = 50000.0 * (1.50 * 1.50)
         assert s_c1.kz_kN_m == pytest.approx(expected_kz_c1)
 
         # Spec SAFE

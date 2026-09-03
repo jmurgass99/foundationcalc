@@ -67,13 +67,16 @@ class TestReactionToFoundationBridge:
 
         r_n1 = results["N1"]
         assert pytest.approx(r_n1["N_max_kN"], rel=1e-4) == 800.0
-        assert pytest.approx(r_n1["B_m"], rel=1e-4) == 2.00
-        assert pytest.approx(r_n1["L_m"], rel=1e-4) == 2.00
-        assert pytest.approx(r_n1["q_act_kPa"], rel=1e-4) == 200.0
-        assert r_n1["status"] == "OK"
+        # Con momentos Mx=10, My=20: ex = 20/800 = 0.025 m, ey = 10/800 = 0.0125 m
+        # B=2.00 m daría q_eff = 800 / (1.95 * 1.975) = 207.7 kPa > 200 kPa.
+        # Meyerhof exige crecer a B = 2.05 m -> q_eff = 800 / (2.00 * 2.025) = 197.53 kPa <= 200 kPa
+        assert pytest.approx(r_n1["B_m"], rel=1e-4) == 2.05
+        assert pytest.approx(r_n1["L_m"], rel=1e-4) == 2.05
+        assert r_n1["q_act_kPa"] <= 200.0
+        assert r_n1["status"] == "BEARING_GOVERNS"
 
         r_n2 = results["N2"]
-        # A_req = 350 / 200 = 1.75 m2 -> sqrt(1.75) = 1.32287 -> round up to 0.05 step = 1.35 m
+        # Sin momentos: A_req = 350 / 200 = 1.75 m2 -> sqrt(1.75) = 1.32287 -> round up to 0.05 step = 1.35 m
         assert pytest.approx(r_n2["N_max_kN"], rel=1e-4) == 350.0
         assert pytest.approx(r_n2["B_m"], rel=1e-4) == 1.35
         assert pytest.approx(r_n2["L_m"], rel=1e-4) == 1.35

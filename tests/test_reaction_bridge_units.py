@@ -31,7 +31,7 @@ from jmstructural_common.model import Model, Node, Reaction, Restraint
 
 class TestReactionBridgePhysicalUnits:
     def test_isolated_footing_sizing_units_hand_calculation(self) -> None:
-        """Verifica el dimensionado en planta de zapata contra derivación a mano paso a paso."""
+        """Verifica el dimensionado en planta de zapata contra derivación a mano paso a paso bajo Meyerhof."""
         r1 = Reaction(node_id="N_BASE_1", case="COMB_MAX", fx_kN=15.0, fy_kN=5.0, fz_kN=450.0, mx_kNm=10.0, my_kNm=20.0, mz_kNm=0.0)
         r2 = Reaction(node_id="N_BASE_1", case="COMB_MIN", fx_kN=5.0, fy_kN=2.0, fz_kN=200.0, mx_kNm=5.0, my_kNm=10.0, mz_kNm=0.0)
 
@@ -45,18 +45,29 @@ class TestReactionBridgePhysicalUnits:
 
         res_n1 = results["N_BASE_1"]
 
-        # Derivación a mano independiente:
+        # Derivación a mano independiente bajo Meyerhof (1953):
         # N_max = max(450.0, 200.0) = 450.0 kN
         assert res_n1["N_max_kN"] == 450.0
-        # A_req = 450.0 / 150.0 = 3.0 m^2 -> side_raw = 1.732 m -> step 0.05 -> 1.75 m
-        assert pytest.approx(res_n1["B_m"], rel=1e-6) == 1.75
-        assert pytest.approx(res_n1["L_m"], rel=1e-6) == 1.75
-        assert pytest.approx(res_n1["area_m2"], rel=1e-6) == 3.0625
-        # q_act = 450.0 / 3.0625 = 146.9388 kPa
-        expected_q_act = 450.0 / 3.0625
-        assert pytest.approx(res_n1["q_act_kPa"], rel=1e-5) == expected_q_act
+        # ex = 20.0 / 450.0 = 0.04444 m, ey = 10.0 / 450.0 = 0.02222 m
+        # Núcleo central: B >= 6 * 0.04444 = 0.267 m (no gobierna)
+        # B = 1.75 m: B' = 1.75 - 2*0.04444 = 1.6611 m, L' = 1.75 - 2*0.02222 = 1.7056 m
+        # A' = 2.833 m2 -> q_eff = 450 / 2.833 = 158.84 kPa > 150.0 kPa (no cumple)
+        # B = 1.80 m: B' = 1.80 - 0.08889 = 1.7111 m, L' = 1.80 - 0.04444 = 1.7556 m
+        # A' = 3.004 m2 -> q_eff = 450 / 3.004 = 149.80 kPa <= 150.0 kPa (CUMPLE)
+        assert pytest.approx(res_n1["B_m"], rel=1e-4) == 1.80
+        assert pytest.approx(res_n1["L_m"], rel=1e-4) == 1.80
+        assert pytest.approx(res_n1["area_m2"], rel=1e-4) == 3.24
         assert res_n1["q_act_kPa"] <= qa_kPa
-        assert res_n1["status"] == "OK"
+        assert res_n1["status"] == "BEARING_GOVERNS"
+
+        # Caso axial puro independiente (Mx=0, My=0):
+        r_axial = Reaction(node_id="N_AX", case="C1", fx_kN=0.0, fy_kN=0.0, fz_kN=450.0, mx_kNm=0.0, my_kNm=0.0, mz_kNm=0.0)
+        res_ax = size_isolated_footing_from_reactions(
+            reactions=[r_axial], allowable_bearing_kPa=qa_kPa, min_size_m=1.0, size_step_m=0.05
+        )["N_AX"]
+        # A_req = 450 / 150 = 3.0 m2 -> side_raw = 1.732 m -> step 0.05 -> 1.75 m
+        assert pytest.approx(res_ax["B_m"], rel=1e-6) == 1.75
+        assert res_ax["status"] == "OK"
 
     def test_reaction_to_point_load_conversion_preserves_magnitudes(self) -> None:
         """Verifica que reaction_to_point_load mantenga fuerzas y momentos con sus signos reales (sin abs)."""
