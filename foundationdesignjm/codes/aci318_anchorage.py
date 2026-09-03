@@ -152,8 +152,81 @@ def shear_capacity(
     cracked: bool = True,
     n_anchors: int = 1,
 ) -> AnchorShearResult:
-    """Shear capacity per ACI 318-19 §17.7."""
-    # Steel (17.7.1.2)
+    """Shear capacity of a cast-in headed anchor per ACI 318-19 §17.7.
+
+    Args:
+        Vu: factored shear demand (N).
+        Ase_V: effective steel cross-area in shear (mm²).
+        futa: ultimate steel stress (MPa). See "futa cap" below — unlike
+            ``tension_capacity``, this docstring did not even state the cap
+            as a precondition until now.
+        fc: concrete f'c (MPa).
+        hef: effective embedment (mm).
+        ca1: edge distance in the direction of shear (mm).
+        da: nominal anchor diameter (mm).
+        le: load-bearing length in shear (mm); defaults to min(hef, 8·da).
+        cracked: True if concrete is cracked in service.
+        n_anchors: anchors acting together (group simplified).
+
+    Steel is always taken as Vsa = 0.60 · Ase_V · futa, which is **case (b)**
+    of §17.7.1.2 — cast-in headed *bolt* and hooked-bolt anchors, and
+    post-installed anchors whose sleeves do not cross the shear plane. It
+    is the only case this function implements.
+
+    **Sourcing.** The 0.60 coefficient is well corroborated. The (a)/(b)/(c)
+    case split described here, the 1.0 coefficient attributed to headed
+    studs, and the 0.80 grout-pad multiplier were reconstructed from
+    secondary sources (code-reference sites and vendor design guides),
+    **not** read from the printed standard. Verify against ACI 318-19
+    before relying on the case boundaries; the number this function returns
+    does not depend on them.
+
+    **Not covered — case (a), welded headed studs.** ACI gives welded
+    headed *studs* the higher Vsa = Ase_V · futa (coefficient 1.0, no 0.60).
+    A welded stud is itself a cast-in headed anchor, so it falls squarely
+    inside this module's declared scope, yet the signature carries no
+    argument distinguishing a welded stud from a headed bolt: both are
+    charged the conservative 0.60. Covering case (a) needs an explicit
+    anchor-type input plus the AWS D1.1 welding precondition.
+
+    **Not covered — anchors through a grout or mortar bed.** ACI reduces
+    Vsa by a 0.80 multiplier for anchors in built-up grout pads — the usual
+    condition for a column baseplate set on grout, so this is likely the
+    most frequently applicable of the omissions listed here. There is no
+    grout-pad argument, the multiplier is never applied, and this function
+    is **unconservative** for that (common) case. Cited to ACI 318-14
+    §17.5.1.3; the ACI 318-19 renumbering is **not verified** and the 0.80
+    value comes from a secondary source. Kept as a declared limitation
+    rather than an input: a ``grout_pad=True`` would ship a number whose
+    -19 clause and value could not be verified.
+
+    **futa cap not applied, and not previously stated here.** ACI caps futa
+    at min(1.9·fya, 860 MPa). This function does not apply it: it receives
+    no fya and uses futa as given. ``tension_capacity`` does not apply it
+    either — it only states the cap as a condition on its futa argument,
+    left to the caller. For futa > 1.9·fya the Vsa returned here is
+    unconservative. Enforcing it would mean adding fya to a public
+    signature.
+
+    **Out of scope by module declaration — case (c), sleeves through the
+    shear plane.** For post-installed anchors whose sleeve crosses the
+    shear plane ACI requires Vsa from ACI 355.2 qualification testing; no
+    closed form can stand in for it. This module declares itself to cover
+    cast-in headed anchors only, so case (c) is outside its scope rather
+    than a silent gap — but nothing in the signature enforces that, and a
+    caller passing post-installed properties gets the case-(b) number back.
+
+    **Unverified — phi for steel in shear.** This module applies
+    PHI_STEEL = 0.75 to both tension and shear.
+    ``fastsap.codes.anchorage`` uses 0.65 for steel in shear and 0.75 for
+    tension. Which is right per Table 17.5.3 has not been verified against
+    the printed standard. If 0.65 is correct, the phi_Vn returned here is
+    unconservative by 0.75/0.65 ≈ 1.15. This is a real disagreement between
+    two modules in this repository, not resolved here.
+    """
+    # Steel, §17.7.1.2 case (b): Vsa = 0.60·Ase_V·futa — cast-in headed bolt
+    # or hooked bolt. NOT welded headed studs (case a, coefficient 1.0), and
+    # no grout-pad 0.80 multiplier. See docstring.
     Vsa = 0.6 * n_anchors * Ase_V * futa
 
     # Breakout (17.7.2.1)
