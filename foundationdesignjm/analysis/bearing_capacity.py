@@ -165,7 +165,8 @@ def inclination_factors(
     `B_eff` and `L_eff` together with `load_direction` ('B', 'L' or
     angle in degrees) determine the correct m.
     """
-    if V <= 0 or H <= 0:
+    if H <= 0:
+        # Sin carga horizontal no hay inclinación de carga: factores neutros.
         return 1.0, 1.0, 1.0
     if m is None:
         if B_eff is None or L_eff is None or B_eff <= 0 or L_eff <= 0:
@@ -185,13 +186,26 @@ def inclination_factors(
                     m = 2.0
 
     phi_rad = math.radians(phi_deg)
-    denom = V + A_eff * c_d / max(math.tan(phi_rad), 1e-9)
 
     if phi_rad <= 1e-9:
-        # Undrained ic (EC7 D.3)
+        # No drenado (EC7 D.3): el ic depende de H y c_u, NO de V. Se computa aunque
+        # V<=0 — el error de abajo es solo de la vía drenada, que sí necesita V.
         ic = 0.5 * (1.0 + math.sqrt(max(0.0, 1.0 - H / (A_eff * c_d)))) if c_d > 0 else 1.0
         return 1.0, ic, 1.0
 
+    # Drenado (Vesic / EN 1997-1 Anexo D): la fórmula asume una resultante de
+    # compresión. Con H>0 y V<=0 la inclinación NO es neutra (1,1,1) —sería
+    # inseguro— ni está definida: gobierna deslizamiento/levantamiento, no
+    # hundimiento. Se niega en vez de aprobar en silencio (el default V_load=0.0
+    # hacía fácil el error, dejando q_ult ~31% del lado inseguro).
+    if V <= 0:
+        raise ValueError(
+            f"inclination_factors: H={H:g} kN>0 con V={V:g} kN<=0. La inclinación de "
+            "carga drenada (Vesic / EN 1997-1 Anexo D) exige una resultante de "
+            "compresión (V>0); con V<=0 el estado límite es deslizamiento o "
+            "levantamiento, no hundimiento. Pasa V_load>0 o usa el chequeo correcto."
+        )
+    denom = V + A_eff * c_d / max(math.tan(phi_rad), 1e-9)
     iq = max(0.0, (1.0 - H / denom)) ** m
     ig = max(0.0, (1.0 - H / denom)) ** (m + 1)
     Nc_factor = _Nq(phi_rad) - 1.0

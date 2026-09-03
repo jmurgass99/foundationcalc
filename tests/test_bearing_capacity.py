@@ -135,3 +135,38 @@ def test_undrained_clay_simple():
     res = undrained_bearing_capacity(foundation=foundation, soil=clay)
     expected = (math.pi + 2) * 45.0 * (1 + 0.2 * (2.7 / 10.0)) + 11.0  # σ_vk,b = 22·0.5 = 11
     assert res.q_ult == pytest.approx(expected, rel=0.05)
+
+
+# ------------------------------------- Inclinación: aprobado silencioso (H1) ---
+def test_inclination_drained_horizontal_without_vertical_raises():
+    """H>0 con V<=0 NO es 'sin inclinación' (1,1,1): la fórmula drenada de
+    Vesic/EC7 exige resultante de compresión (V>0). Con el default V_load=0, devolver
+    factores neutros dejaba q_ult del lado inseguro (~31%)."""
+    from foundationdesignjm.analysis.bearing_capacity import inclination_factors
+    with pytest.raises(ValueError, match="V"):
+        inclination_factors(H=200.0, V=0.0, A_eff=3.75, c_d=0.0, phi_deg=35.0,
+                            B_eff=1.5, L_eff=2.5)
+
+
+def test_inclination_no_horizontal_is_neutral():
+    """H<=0: sin carga horizontal, factores neutros (1,1,1). Esto NO cambia."""
+    from foundationdesignjm.analysis.bearing_capacity import inclination_factors
+    assert inclination_factors(H=0.0, V=500.0, A_eff=3.75, c_d=0.0, phi_deg=35.0,
+                               B_eff=1.5, L_eff=2.5) == (1.0, 1.0, 1.0)
+
+
+def test_inclination_undrained_horizontal_without_vertical_computes():
+    """Contraste: el ic NO drenado depende de H y c_u, NO de V. Con phi=0, H>0 y
+    V=0 SÍ se computa — el error es solo del caso drenado, que sí necesita V."""
+    from foundationdesignjm.analysis.bearing_capacity import inclination_factors
+    iq, ic, ig = inclination_factors(H=100.0, V=0.0, A_eff=3.75, c_d=50.0, phi_deg=0.0,
+                                     B_eff=1.5, L_eff=2.5)
+    assert iq == 1.0 and ig == 1.0
+    assert 0.0 < ic < 1.0   # hay reducción por el cortante
+
+
+def test_drained_bearing_horizontal_without_vertical_is_not_silently_approved():
+    """End-to-end: drained_bearing_capacity con H_load>0 y V_load por defecto (0)
+    daba q_ult SIN reducción por inclinación. Ahora se niega en vez de aprobar."""
+    with pytest.raises(ValueError):
+        drained_bearing_capacity(PAD_FOOTING, SAND, H_load=200.0)
