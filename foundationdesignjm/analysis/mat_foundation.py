@@ -30,8 +30,8 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
-from scipy.sparse.linalg import spsolve
+# scipy.sparse imports deferred to _assemble() and solve() to keep package import lightweight
+
 
 # Gauss points for 2x2 quadrature on a [-1, 1]^2 square
 _GP2 = np.array([
@@ -286,8 +286,9 @@ class MatFoundationSolver:
         self._uniform_pressure += q
 
     # --------------------------------------------------------------- solver
-    def _assemble(self, active_winkler_nodes: Optional[np.ndarray] = None) -> Tuple[csr_matrix, np.ndarray, np.ndarray]:
+    def _assemble(self, active_winkler_nodes: Optional[np.ndarray] = None) -> Tuple[Any, np.ndarray, np.ndarray]:
         """Assemble global K and F. Returns (K, F, nodal_winkler_stiffness)."""
+        from scipy.sparse import lil_matrix
         K = lil_matrix((self.n_dofs, self.n_dofs))
         F = np.zeros(self.n_dofs)
         kw_node = np.zeros(self.n_nodes)  # lumped Winkler stiffness per node
@@ -345,6 +346,7 @@ class MatFoundationSolver:
 
         history_states = []
         history_w = []
+        from scipy.sparse.linalg import spsolve
 
         while True:
             K, F, _ = self._assemble(active_winkler_nodes=active)

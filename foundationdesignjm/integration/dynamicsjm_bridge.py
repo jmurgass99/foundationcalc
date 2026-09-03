@@ -47,20 +47,14 @@ from ..dynamics.foundation_impedance import (
 
 
 # ---------------------------------------------------------------------------
-# Optional dependency detection
-# ---------------------------------------------------------------------------
+# DynamicsJm integration requires BilinearIsolator which is deprecated/refactored into LeadRubberBearing
+DYNAMICSJM_AVAILABLE = False
 
-try:                                                           # pragma: no cover
-    from dynamicsjm.risk.loss_model import (                  # type: ignore
-        EarthquakeRiskAnalyzer,
-        FEMAP58LossModel,
-    )
-    from dynamicsjm.control.base_isolation import BilinearIsolator  # type: ignore  # noqa: F401
-    from dynamicsjm.solvers.direct import DirectSolver         # type: ignore
-    from dynamicsjm.systems.sdof import SDOFSystem             # type: ignore
-    DYNAMICSJM_AVAILABLE = True
-except ImportError:
-    DYNAMICSJM_AVAILABLE = False
+EarthquakeRiskAnalyzer: Any = None
+FEMAP58LossModel: Any = None
+BilinearIsolator: Any = None
+DirectSolver: Any = None
+SDOFSystem: Any = None
 
 
 def _require_dynamicsjm() -> None:

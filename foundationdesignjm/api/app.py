@@ -12,9 +12,6 @@ except ImportError as exc:
     ) from exc
 
 from .._brand import NAME as _BRAND_NAME
-from ..services import footings, walls, piles, bearing, seismic
-from ..jobs import JobQueue
-from ..jobs.api import router as _jobs_router, set_queue as _set_jobs_queue
 
 
 router = APIRouter()
@@ -37,6 +34,7 @@ def root():
 
 @router.post("/api/footings/isolated", summary="Dimensionamiento geotécnico y estructural de zapatas aisladas según Eurocódigo 7 / EC2")
 def api_isolated_footing(inp: dict):
+    from ..services import footings
     try:
         result = footings.design_isolated_footing(
             footings.IsolatedFootingInput(**inp)
@@ -54,6 +52,7 @@ def api_isolated_footing(inp: dict):
 
 @router.post("/api/walls/cantilever", summary="Estabilidad y armado de muros de contención en ménsula según Eurocódigo 7")
 def api_cantilever_wall(inp: dict):
+    from ..services import walls
     try:
         result = walls.design_cantilever_wall(walls.CantileverWallInput(**inp))
         return {
@@ -69,6 +68,7 @@ def api_cantilever_wall(inp: dict):
 
 @router.post("/api/piles/axial", summary="Capacidad portante axil de pilotes individuales (punta + fuste) según Eurocódigo 7")
 def api_pile_axial(inp: dict):
+    from ..services import piles
     try:
         if "layers_qu_kPa" in inp:
             inp["layers_qu_kPa"] = tuple(inp["layers_qu_kPa"])
@@ -89,6 +89,7 @@ def api_pile_axial(inp: dict):
 
 @router.post("/api/bearing/multilayer", summary="Capacidad de carga de cimentaciones sobre suelos estratificados multicapa")
 def api_bearing(inp: dict):
+    from ..services import bearing
     try:
         layers = tuple(bearing.SoilLayerSpec(**l)
                        for l in inp.pop("layers", []))
@@ -108,6 +109,7 @@ def api_bearing(inp: dict):
 
 @router.post("/api/seismic/mononobe_okabe", summary="Empuje sísmico dinámico de tierras según método de Mononobe-Okabe (EC8 Parte 5)")
 def api_mo(inp: dict):
+    from ..services import seismic
     try:
         result = seismic.mononobe_okabe_thrust(seismic.MononobeOkabeInput(**inp))
         return {
@@ -135,12 +137,14 @@ def create_router() -> APIRouter:
 # ---------------------------------------------------------------------------
 # Job queue lifecycle (solo en app standalone). Reemplaza los @app.on_event
 # deprecados por un gestor de contexto lifespan moderno de FastAPI.
-_job_queue: JobQueue | None = None
+_job_queue: Any = None
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     global _job_queue
+    from ..jobs import JobQueue
+    from ..jobs.api import set_queue as _set_jobs_queue
     _job_queue = JobQueue(numerical_workers=4)
     _set_jobs_queue(_job_queue)
     try:
@@ -156,4 +160,9 @@ app.add_middleware(
     allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 app.include_router(router)
-app.include_router(_jobs_router)
+
+def _init_jobs_router():
+    from ..jobs.api import router as _jobs_router
+    app.include_router(_jobs_router)
+
+_init_jobs_router()
