@@ -10,6 +10,16 @@ from typing import Any
 
 @dataclass(frozen=True)
 class WinklerSpring:
+    """Resorte puntual traslacional de apoyo basado en hipótesis simplificada de Winkler.
+
+    NOTA DE INGENIERÍA:
+    La relación adoptada (Kx = Ky = 0.5 * Kz) es una simplificación escalar de ingeniería
+    práctica. Comparada contra la formulación elastodinámica analítica de Gazetas (1991)
+    en semi-espacio elástico (disponible en GeoJm.ssi_springs), esta simplificación:
+      1. Subestima la rigidez lateral elástica real en aproximadamente un 36%
+         (Gazetas predice Kx/Kz ≈ 0.78 para zapatas cuadradas con nu=0.35).
+      2. Omite la rigidez rotacional por cabeceo (rocking) Krx, Kry a nivel de nudo único.
+    """
     joint_name: str
     kx_kN_m: float
     ky_kN_m: float
