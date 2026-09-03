@@ -18,6 +18,7 @@ from foundationdesignjm.analysis.reverse_design import (
     optimize_rectangular_footing,
 )
 from foundationdesignjm.codes.eurocode7 import DesignApproach
+from jmstructural_common.audit_status import CalculationStatus
 
 
 # ------------------------------------------------------ Reverse design ------
@@ -148,3 +149,64 @@ def test_pile_group_flags_failure_when_overloaded():
     res = distribute_loads_rigid_cap(g, V_kN=6000, H_y_kN=600, M_x_kNm=2000)
     assert not res.all_ok
     assert res.governing_pile != ""
+
+
+# ------------------------------------ Aprobados silenciosos (H1) ------------
+# La capacidad lateral/axial NO declarada por defecto vale 0.0. Antes, con carga
+# en esa dirección: la lateral salía util=0.0 -> "OK" (silencioso), mientras la
+# axial salía dividida por 1e-6 -> un número basura enorme. Ninguna de las dos es
+# honesta: si hay demanda y la capacidad es desconocida, el chequeo NO se hizo.
+
+def test_lateral_load_without_lateral_capacity_is_not_evaluated_not_zero():
+    """Carga horizontal + capacidad lateral SIN declarar => NO EVALUADO, no 0.0.
+
+    Antes: group_lateral_utilization=0.0 con tag "ok". Un grupo bajo cortante que
+    no sabe su capacidad lateral NO puede firmarse como que cumple.
+    """
+    g = rectangular_group(2, 3, 2.4, 0.8, axial_capacity_kN=1500)  # SIN lateral
+    res = distribute_loads_rigid_cap(g, V_kN=6000, H_y_kN=600)
+    assert res.group_lateral_utilization is None, "lateral desconocida no es 0.0"
+    assert "lateral_capacity_kN" in res.missing_inputs
+    assert res.status == CalculationStatus.NO_CALCULADO
+    assert not res.all_ok, "no se puede certificar sin el chequeo lateral"
+    # El axial SÍ se evaluó (capacidad dada, demanda de compresión conocida).
+    assert res.group_axial_utilization is not None
+
+
+def test_axial_load_without_axial_capacity_is_not_evaluated_not_huge():
+    """Simetría: capacidad axial SIN declarar => NO EVALUADO, no ~6.7e8.
+
+    Antes la axial dividía por max(cap,1e-6): un número enorme que 'falla fuerte'
+    pero es basura, no un ratio real. También es ausencia, y se propaga como tal.
+    """
+    g = rectangular_group(2, 3, 2.4, 0.8, lateral_capacity_kN=120)  # SIN axial
+    res = distribute_loads_rigid_cap(g, V_kN=6000)
+    assert res.group_axial_utilization is None
+    assert "axial_capacity_kN" in res.missing_inputs
+    assert res.status == CalculationStatus.NO_CALCULADO
+    assert not res.all_ok
+
+
+def test_no_lateral_demand_without_lateral_capacity_is_ok():
+    """SIN capacidad lateral pero SIN demanda lateral tampoco: no es un fallo.
+
+    Un chequeo sin demanda no falta: no hay nada que comprobar. Aquí NO debe
+    aparecer 'lateral_capacity_kN' en missing_inputs — sería un falso NO_CALCULADO.
+    """
+    g = rectangular_group(2, 3, 2.4, 0.8, axial_capacity_kN=1500)  # sin lat, sin H
+    res = distribute_loads_rigid_cap(g, V_kN=6000)
+    assert "lateral_capacity_kN" not in res.missing_inputs
+    assert res.group_lateral_utilization == 0.0
+    assert res.status == CalculationStatus.CALCULADO_CUMPLE
+    assert res.all_ok
+
+
+def test_fully_specified_overloaded_group_reports_falla_status():
+    """Con TODAS las capacidades y sobrecarga: CALCULADO_FALLA, no NO_CALCULADO."""
+    g = rectangular_group(2, 3, 2.4, 0.8,
+                          axial_capacity_kN=1500, tension_capacity_kN=400,
+                          lateral_capacity_kN=120)
+    res = distribute_loads_rigid_cap(g, V_kN=6000, H_y_kN=600, M_x_kNm=2000)
+    assert res.missing_inputs == []
+    assert res.status == CalculationStatus.CALCULADO_FALLA
+    assert not res.all_ok

@@ -889,25 +889,44 @@ class PileGroupPage(BasePage):
             M_x_kNm=self.Mx.get_float(2000),
         )
         o = self.output
+
+        def _u(u: float | None) -> str:
+            # None = NO EVALUADA (capacidad ausente con demanda). No es 0 %.
+            return "NO EVALUADO" if u is None else f"{u * 100:.1f}%"
+
+        def _tag(u: float | None) -> str:
+            return "fail" if (u is None or u > 1) else "ok"
+
         o.writeln("==== PILE GROUP ====", tag="title")
         o.writeln(f"  E_axial = {res.axial_efficiency:.3f},  E_lat = {res.lateral_efficiency:.3f}")
         o.writeln(f"  N_max compression = {res.N_max_compression:.0f} kN")
         o.writeln(f"  N_max tension     = {res.N_max_tension:.0f} kN")
         o.writeln(f"  H_max per pile    = {res.H_max_per_pile:.0f} kN")
         o.writeln(f"  Governing pile    = {res.governing_pile}")
-        o.writeln(f"  Group util (compression) = {res.group_axial_utilization*100:.1f}%",
-                 tag="ok" if res.group_axial_utilization <= 1 else "fail")
-        o.writeln(f"  Group util (lateral)     = {res.group_lateral_utilization*100:.1f}%",
-                 tag="ok" if res.group_lateral_utilization <= 1 else "fail")
+        o.writeln(f"  Estado del grupo  = {res.status.value}",
+                 tag="ok" if res.all_ok else "fail")
+        if res.missing_inputs:
+            o.writeln(f"  NO EVALUADO — faltan: {', '.join(res.missing_inputs)}",
+                     tag="fail")
+        o.writeln(f"  Group util (compression) = {_u(res.group_axial_utilization)}",
+                 tag=_tag(res.group_axial_utilization))
+        o.writeln(f"  Group util (lateral)     = {_u(res.group_lateral_utilization)}",
+                 tag=_tag(res.group_lateral_utilization))
         for f in res.forces:
             o.writeln(f"   {f.pile_name}: x={f.x_m:+5.2f}, y={f.y_m:+5.2f}  "
-                     f"N={f.N_kN:>7.0f} kN  util={f.axial_utilization*100:>4.1f}%")
+                     f"N={f.N_kN:>7.0f} kN  util={_u(f.axial_utilization)}")
         # Plot
         self.fig.clear()
         ax = self.fig.add_subplot(1, 1, 1)
         ax.set_aspect("equal")
         for f in res.forces:
-            color = "red" if f.axial_utilization > 1 else "blue"
+            # gris = no evaluada (capacidad ausente); rojo = util > 100 %.
+            if f.axial_utilization is None:
+                color = "grey"
+            elif f.axial_utilization > 1:
+                color = "red"
+            else:
+                color = "blue"
             ax.scatter(f.x_m, f.y_m, s=200, c=color, edgecolors="black", zorder=5)
             ax.text(f.x_m, f.y_m - 0.3, f"{f.N_kN:.0f}", fontsize=8, ha="center")
         ax.set_title("Plan view (red = util > 100%)")

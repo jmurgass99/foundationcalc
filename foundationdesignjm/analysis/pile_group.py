@@ -26,8 +26,10 @@ Theory: docs/theory/16_pile_groups.md.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
+
+from jmstructural_common.audit_status import CalculationStatus, resolve_status
 
 from pydantic import BaseModel, Field
 
@@ -170,14 +172,25 @@ class PileForce:
     N_kN: float
     H_x_kN: float
     H_y_kN: float
-    axial_utilization: float
-    lateral_utilization: float
+    #: Utilización en cada dirección. None = NO EVALUADA (hay demanda en esa
+    #: dirección pero la capacidad no se declaró). 0.0 = sin demanda en esa
+    #: dirección (no hay nada que comprobar). NUNCA 0.0 por capacidad ausente.
+    axial_utilization: Optional[float]
+    lateral_utilization: Optional[float]
     in_compression: bool
+    tension_utilization: Optional[float] = None
+    status: CalculationStatus = CalculationStatus.CALCULADO_CUMPLE
+    missing_inputs: list[str] = field(default_factory=list)
 
 
 @dataclass
 class PileGroupResult:
-    """Bundle of per-pile forces + group-level utilizations."""
+    """Bundle of per-pile forces + group-level utilizations.
+
+    Las utilizaciones de grupo son ``None`` cuando la dirección no se pudo evaluar
+    (capacidad ausente con demanda presente). ``all_ok`` sólo es ``True`` si el
+    estado es ``CALCULADO_CUMPLE``: un grupo con un chequeo sin hacer NO se firma.
+    """
 
     forces: List[PileForce]
     N_max_compression: float
@@ -185,11 +198,13 @@ class PileGroupResult:
     H_max_per_pile: float
     axial_efficiency: float
     lateral_efficiency: float
-    group_axial_utilization: float    # worst pile compression check
-    group_tension_utilization: float  # worst pile tension check
-    group_lateral_utilization: float
+    group_axial_utilization: Optional[float]    # worst pile compression check
+    group_tension_utilization: Optional[float]  # worst pile tension check
+    group_lateral_utilization: Optional[float]
     governing_pile: str
     all_ok: bool
+    status: CalculationStatus = CalculationStatus.CALCULADO_CUMPLE
+    missing_inputs: list[str] = field(default_factory=list)
 
 
 def distribute_loads_rigid_cap(
@@ -227,7 +242,6 @@ def distribute_loads_rigid_cap(
     H_max = 0.0
     worst_pile = ""
     worst_util = 0.0
-    worst_tension_util = 0.0
 
     for p in group.piles:
         # Axial
@@ -243,44 +257,91 @@ def distribute_loads_rigid_cap(
         H_i = math.sqrt(H_xi ** 2 + H_yi ** 2)
         H_max = max(H_max, H_i)
 
-        # Group efficiency for axial: cap_eff = capacity · E_axial
-        cap_axial = max(p.axial_capacity_kN * E_axial, 1e-6)
-        cap_tension = max(p.tension_capacity_kN, 1e-6)
-        cap_lateral = max(p.lateral_capacity_kN, 1e-6)
+        # Utilización por dirección. La regla, idéntica en las tres: si hay
+        # DEMANDA y la capacidad es desconocida (<= 0, el default), la utilización
+        # es None (NO EVALUADA) y se apunta el input que falta. Si NO hay demanda
+        # en esa dirección, es 0.0 (no hay nada que comprobar). Nunca 0.0 —ni un
+        # número basura dividido por 1e-6— por capacidad ausente.
+        miss: list[str] = []
 
-        if N_i >= 0:
-            ax_util = N_i / cap_axial
-            tens_util = 0.0
+        if N_i > 1e-9:  # compresión
+            if p.axial_capacity_kN > 0.0:
+                ax_util: Optional[float] = N_i / (p.axial_capacity_kN * E_axial)
+            else:
+                ax_util = None
+                miss.append("axial_capacity_kN")
         else:
             ax_util = 0.0
-            tens_util = -N_i / cap_tension
-        lat_util = H_i / cap_lateral if p.lateral_capacity_kN > 0 else 0.0
+
+        if N_i < -1e-9:  # tracción / levantamiento
+            if p.tension_capacity_kN > 0.0:
+                tens_util: Optional[float] = (-N_i) / p.tension_capacity_kN
+            else:
+                tens_util = None
+                miss.append("tension_capacity_kN")
+        else:
+            tens_util = 0.0
+
+        if H_i > 1e-9:  # demanda lateral
+            if p.lateral_capacity_kN > 0.0:
+                lat_util: Optional[float] = H_i / p.lateral_capacity_kN
+            else:
+                lat_util = None
+                miss.append("lateral_capacity_kN")
+        else:
+            lat_util = 0.0
+
+        computed = [u for u in (ax_util, tens_util, lat_util) if u is not None]
+        pile_gov = max(computed) if computed else None
+        pile_status = resolve_status(pile_gov, missing_inputs=miss)
 
         forces.append(PileForce(
-            pile_name=p.name or f"P{forces[-1].pile_name[1:] if forces else 1}",
+            pile_name=p.name or f"P{len(forces) + 1}",
             x_m=p.x_m, y_m=p.y_m, N_kN=N_i,
             H_x_kN=H_xi, H_y_kN=H_yi,
             axial_utilization=ax_util,
             lateral_utilization=lat_util,
             in_compression=N_i >= 0,
+            tension_utilization=tens_util,
+            status=pile_status,
+            missing_inputs=miss,
         ))
         if N_i > N_max_c:
             N_max_c = N_i
         if N_i < N_min_c:
             N_min_c = N_i
-        combined = max(ax_util, tens_util, lat_util)
-        if combined > worst_util:
-            worst_util = combined
+        if pile_gov is not None and pile_gov > worst_util:
+            worst_util = pile_gov
             worst_pile = p.name
 
     N_max_tension = -N_min_c if N_min_c < 0 else 0.0
-    group_ax_util = max(f.axial_utilization for f in forces)
-    group_tens_util = max(((-f.N_kN) / max(group.piles[0].tension_capacity_kN, 1e-6))
-                          for f in forces if f.N_kN < 0) if any(f.N_kN < 0 for f in forces) else 0.0
-    group_lat_util = max(f.lateral_utilization for f in forces)
 
-    all_ok = (group_ax_util <= 1.0 and group_tens_util <= 1.0
-              and group_lat_util <= 1.0)
+    def _group_util(vals: list[Optional[float]]) -> Optional[float]:
+        # Si CUALQUIER pilote quedó sin evaluar en esta dirección, la dirección de
+        # grupo NO está evaluada — no se toma el máximo de los que sí (ocultaría
+        # el hueco).
+        if any(v is None for v in vals):
+            return None
+        return max(vals) if vals else 0.0
+
+    group_ax_util = _group_util([f.axial_utilization for f in forces])
+    group_tens_util = _group_util([f.tension_utilization for f in forces])
+    group_lat_util = _group_util([f.lateral_utilization for f in forces])
+
+    missing = sorted({m for f in forces for m in f.missing_inputs})
+    computed_group = [u for u in (group_ax_util, group_tens_util, group_lat_util)
+                      if u is not None]
+    governing = max(computed_group) if computed_group else None
+    status = resolve_status(governing, missing_inputs=missing)
+    all_ok = status == CalculationStatus.CALCULADO_CUMPLE
+
+    # governing_pile: el de peor utilización computada; si ninguno se pudo evaluar,
+    # el primero al que le falta un dato (es el que hay que mirar).
+    if not worst_pile:
+        for f in forces:
+            if f.missing_inputs:
+                worst_pile = f.pile_name
+                break
 
     return PileGroupResult(
         forces=forces,
@@ -294,6 +355,8 @@ def distribute_loads_rigid_cap(
         group_lateral_utilization=group_lat_util,
         governing_pile=worst_pile,
         all_ok=all_ok,
+        status=status,
+        missing_inputs=missing,
     )
 
 

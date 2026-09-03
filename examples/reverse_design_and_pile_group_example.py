@@ -112,7 +112,10 @@ def main() -> None:
     print(f"  N_max compression = {res_g.N_max_compression:.0f} kN")
     print(f"  N_max tension     = {res_g.N_max_tension:.0f} kN")
     print(f"  H_max per pile    = {res_g.H_max_per_pile:.0f} kN")
-    print(f"  Group util (axial) = {res_g.group_axial_utilization * 100:.1f} %")
+    _ga = res_g.group_axial_utilization
+    print(f"  Group util (axial) = "
+          f"{'NO EVALUADO' if _ga is None else format(_ga * 100, '.1f') + ' %'}")
+    print(f"  Estado del grupo   = {res_g.status.value}")
     print(f"  Governing pile     = {res_g.governing_pile}")
     print(f"  All OK            = {res_g.all_ok}")
     print()
@@ -121,9 +124,12 @@ def main() -> None:
           f"{'H [kN]':>10}{'util':>8}")
     for f in res_g.forces:
         H = (f.H_x_kN ** 2 + f.H_y_kN ** 2) ** 0.5
-        util = max(f.axial_utilization, f.lateral_utilization)
+        _computed = [u for u in (f.axial_utilization, f.lateral_utilization)
+                     if u is not None]
+        util = max(_computed) if _computed else None
+        _ut = "  N/EVAL" if util is None else f"{util * 100:>6.1f}%"
         print(f"  {f.pile_name:<5}{f.x_m:>+8.2f}{f.y_m:>+8.2f}"
-              f"{f.N_kN:>10.0f}{H:>10.0f}{util * 100:>7.1f}%")
+              f"{f.N_kN:>10.0f}{H:>10.0f}{_ut:>8}")
 
 
 if __name__ == "__main__":
