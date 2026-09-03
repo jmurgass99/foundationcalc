@@ -332,6 +332,8 @@ def foundation_chain_from_etabs(
     if safe_client is not None:
         injected_footings = 0
         injected_loads = 0
+        footing_failures: list[str] = []
+        load_failures: list[str] = []
         for f_spec in footing_specs:
             try:
                 safe_client.add_mat_slab(
@@ -345,8 +347,10 @@ def foundation_chain_from_etabs(
                     subgrade_modulus_ks=f_spec["subgrade_modulus_ks"],
                 )
                 injected_footings += 1
-            except Exception:
-                pass
+            except Exception as exc:
+                # El fallo se REGISTRA, no se traga: sin esto, una zapata que SAFE
+                # rechaza desaparece y el conteo miente por omision.
+                footing_failures.append(f"{f_spec.get('name', '?')}: {exc}")
 
         for c_load in column_loads:
             try:
@@ -361,13 +365,27 @@ def foundation_chain_from_etabs(
                     Mz=c_load["Mz"],
                 )
                 injected_loads += 1
-            except Exception:
-                pass
+            except Exception as exc:
+                load_failures.append(
+                    f"{c_load.get('point_name', '?')}/{c_load.get('case', '?')}: {exc}"
+                )
 
+        n_footings = len(footing_specs)
+        n_loads = len(column_loads)
+        # Exito COMPLETO: TODO inyectado. Antes bastaba UNA zapata o UNA carga
+        # (`> 0 or > 0`) para declarar exito, con el resto tragado en silencio: 1 de
+        # 10 inyectadas se reportaba como exito. Un exito parcial NO es exito.
+        complete = injected_footings == n_footings and injected_loads == n_loads
         injection_status = {
             "injected_footings": injected_footings,
+            "n_footings": n_footings,
             "injected_loads": injected_loads,
-            "success": injected_footings > 0 or injected_loads > 0,
+            "n_loads": n_loads,
+            "footing_failures": footing_failures,
+            "load_failures": load_failures,
+            "success": complete,
+            "status": "OK" if complete
+                      else "PARCIAL - revisar footing_failures / load_failures",
         }
 
     return FoundationChainResult(

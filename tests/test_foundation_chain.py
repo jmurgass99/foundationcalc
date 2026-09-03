@@ -261,3 +261,30 @@ class TestPunchingApplicability:
             )
             text = pkg.memoria_markdown
             assert "6.4" in text
+
+    def test_partial_safe_injection_is_not_reported_as_success(self) -> None:
+        """Inyección PARCIAL no es éxito. Antes: `success = injected_footings > 0 or
+        injected_loads > 0`, así que con UNA sola cosa inyectada (y el resto fallando
+        en silencio por `except Exception: pass`) el estado decía éxito. Ahora el
+        éxito exige TODO inyectado, y cada fallo queda registrado en vez de tragado."""
+        reactions = [
+            Reaction(node_id="C1", case="COMB1", fz_kN=400.0, mx_kNm=10.0, my_kNm=10.0),
+            Reaction(node_id="C2", case="COMB1", fz_kN=500.0, mx_kNm=12.0, my_kNm=8.0),
+        ]
+        soil_params = {"allowable_bearing_kPa": 200.0,
+                       "subgrade_modulus_ks_kN_m3": 40000.0}
+
+        mock_safe = MagicMock()
+        # Las zapatas entran; la inyección de cargas falla siempre.
+        mock_safe.add_column_load.side_effect = RuntimeError("SAFE rechazo la carga")
+
+        res = foundation_chain_from_etabs(reactions, soil_params, safe_client=mock_safe)
+        st = res.safe_injection_status
+        assert st is not None
+        assert st["injected_footings"] == st["n_footings"] == 2
+        assert st["injected_loads"] == 0 and st["n_loads"] == 2
+        # El éxito parcial NO es éxito:
+        assert st["success"] is False
+        # Y el fallo quedó REGISTRADO, no tragado:
+        assert len(st["load_failures"]) == 2
+        assert "SAFE rechazo la carga" in st["load_failures"][0]
