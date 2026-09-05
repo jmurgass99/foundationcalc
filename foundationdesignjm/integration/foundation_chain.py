@@ -16,6 +16,7 @@ Flujo integral de producción:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 import math
 from pathlib import Path
 from typing import Any, Sequence, Optional
@@ -464,6 +465,7 @@ def foundation_package(
         footing_thickness_m,
         concrete,
         steel,
+        max_side_m=max_footing_side_m,
     )
 
     # Si se activa la sustitución, reemplazar los pares de zapatas aisladas por la combinada
@@ -649,6 +651,49 @@ def _resolve_reactions(etabs_or_reactions: Any, combos: Optional[list[str]] = No
     return reactions
 
 
+_log = logging.getLogger(__name__)
+
+#: Estados de una zapata aislada que significan "diseño convergido". Sólo éstas se
+#: consideran para combinar: combinar no arregla un deslizamiento ni una
+#: excentricidad que ya desbordó el tamaño máximo (SWITCH_A_PILOTES, EXCEEDED,
+#: SLIDING_GOVERNS), ni tiene sentido sin carga (NO_LOAD, UPLIFT_GOVERNS).
+_COMBINABLE_STATUSES = frozenset({"OK", "OK_WITH_UPLIFT_WARNING", "BEARING_GOVERNS", "OVERTURNING_GOVERNS"})
+
+
+def _isolated_design_converged(summary: dict[str, Any], max_side_m: float | None) -> bool:
+    """¿La zapata aislada llegó a un diseño válido? (regla 1 de las combinadas)."""
+    if str(summary.get("status", "")) not in _COMBINABLE_STATUSES:
+        return False
+    if max_side_m is not None:
+        # `OVERTURNING_GOVERNS` se emite también cuando la zapata topa el tamaño
+        # máximo SIN cumplir (mismo literal, dos significados): al máximo no cuenta.
+        lado = max(float(summary.get("B_m", 0.0)), float(summary.get("L_m", 0.0)))
+        if lado >= max_side_m - 1e-9:
+            return False
+    return True
+
+
+def _combined_footing_is_plausible(
+    cf: CombinedFootingResult, column_size_m: float, spacing_m: float
+) -> tuple[bool, str]:
+    """¿Es construible la combinada? (regla 3).
+
+    Ancho >= columna + 0.30 m (0.15 m de vuelo mínimo a cada lado) y largo >=
+    separación entre columnas + una columna. `design_combined_footing` reparte el
+    área requerida sobre un largo fijado por la separación: con cargas pequeñas y
+    columnas lejanas produce tiras de 0.17 m de ancho y 6.8 m de largo -- medido
+    el 2026-09-05 -- que salían con estado OK. Devuelve (ok, motivo).
+    """
+    min_B = column_size_m + 0.30
+    if float(cf.B_m) < min_B - 1e-9:
+        return False, (f"ancho {cf.B_m:.2f} m < mínimo construible {min_B:.2f} m "
+                       f"(columna {column_size_m:.2f} m + 0.30 m)")
+    min_L = spacing_m + column_size_m
+    if float(cf.L_m) < min_L - 1e-9:
+        return False, f"largo {cf.L_m:.2f} m < separación + columna {min_L:.2f} m"
+    return True, ""
+
+
 def _detect_and_design_combined_footings(
     design_summary: dict[str, dict[str, Any]],
     col_coords: dict[str, tuple[float, float]],
@@ -658,51 +703,75 @@ def _detect_and_design_combined_footings(
     concrete: Concrete,
     steel: ReinforcingSteel,
     clearance_min_m: float = 0.10,
+    max_side_m: float | None = None,
 ) -> tuple[list[CombinedFootingResult], list[tuple[str, str]]]:
-    """Detecta solapes entre pares de zapatas aisladas y diseña zapatas combinadas."""
+    """Detecta solapes entre zapatas aisladas CONVERGIDAS y diseña zapatas combinadas.
+
+    MEDIDO el 2026-09-05 (pipeline maestro de fastsap, planta 1×1, 4 columnas de
+    ~144 kN a 4.5 m): las cuatro aisladas no convergían (5.0-5.3 m de lado) y aun
+    así esta función las sustituyó por SEIS combinadas -- una por cada par,
+    incluidas las diagonales a 6.36 m -- de 0.17 a 0.24 m de ancho, con estado OK.
+    Cada columna estaba en tres a la vez. Tres reglas:
+
+      1. Sólo se combinan zapatas aisladas convergidas (:func:`_isolated_design_converged`).
+      2. Un nodo participa como mucho en UNA combinada: los candidatos se ordenan
+         por separación y se toman con avidez.
+      3. La combinada tiene que ser construible (:func:`_combined_footing_is_plausible`);
+         si no, el par se deja aislado y se registra el motivo.
+    """
     combined_results: list[CombinedFootingResult] = []
     replaced_pairs: list[tuple[str, str]] = []
-    nodes = list(design_summary.keys())
+    nodes = [
+        n for n in design_summary
+        if n in col_coords and _isolated_design_converged(design_summary[n], max_side_m)
+    ]
 
+    # Candidatos por solape de cajas envolventes, ordenados por separación.
+    candidates: list[tuple[float, str, str]] = []
     for i in range(len(nodes)):
         for j in range(i + 1, len(nodes)):
             n1, n2 = nodes[i], nodes[j]
-            if n1 not in col_coords or n2 not in col_coords:
-                continue
             x1, y1 = col_coords[n1]
             x2, y2 = col_coords[n2]
-
             B1, L1 = float(design_summary[n1]["B_m"]), float(design_summary[n1]["L_m"])
             B2, L2 = float(design_summary[n2]["B_m"]), float(design_summary[n2]["L_m"])
-
             dx = abs(x1 - x2)
             dy = abs(y1 - y2)
-
-            # Comprobar solape de bounding boxes
             overlap_x = dx < ((B1 + B2) / 2.0 + clearance_min_m)
             overlap_y = dy < ((L1 + L2) / 2.0 + clearance_min_m)
-
             if overlap_x and overlap_y:
                 spacing = math.hypot(dx, dy)
                 if spacing >= 0.5:
-                    p1 = float(design_summary[n1]["N_max_kN"])
-                    p2 = float(design_summary[n2]["N_max_kN"])
-                    col_sz = 0.40
-                    if isinstance(column_dimensions, dict):
-                        col_sz = max(column_dimensions.get(n1, (0.4, 0.4))[0], column_dimensions.get(n2, (0.4, 0.4))[0])
+                    candidates.append((spacing, n1, n2))
+    candidates.sort()
 
-                    inp = CombinedFootingInputs(
-                        P1_kN=max(p1, 50.0),
-                        P2_kN=max(p2, 50.0),
-                        col_spacing_m=spacing,
-                        column_1_to_property_line_m=0.0,
-                        column_size_m=col_sz,
-                        q_allow_kPa=qa_kPa,
-                        thickness_m=footing_thickness_m,
-                    )
-                    res = design_combined_footing(inp, concrete, steel)
-                    combined_results.append(res)
-                    replaced_pairs.append((n1, n2))
+    used: set[str] = set()
+    for spacing, n1, n2 in candidates:
+        if n1 in used or n2 in used:
+            continue
+        p1 = float(design_summary[n1]["N_max_kN"])
+        p2 = float(design_summary[n2]["N_max_kN"])
+        col_sz = 0.40
+        if isinstance(column_dimensions, dict):
+            col_sz = max(column_dimensions.get(n1, (0.4, 0.4))[0], column_dimensions.get(n2, (0.4, 0.4))[0])
+
+        inp = CombinedFootingInputs(
+            P1_kN=max(p1, 50.0),
+            P2_kN=max(p2, 50.0),
+            col_spacing_m=spacing,
+            column_1_to_property_line_m=0.0,
+            column_size_m=col_sz,
+            q_allow_kPa=qa_kPa,
+            thickness_m=footing_thickness_m,
+        )
+        res = design_combined_footing(inp, concrete, steel)
+        ok, motivo = _combined_footing_is_plausible(res, col_sz, spacing)
+        if not ok:
+            _log.warning("zapata combinada %s-%s rechazada, se dejan aisladas: %s", n1, n2, motivo)
+            continue
+        combined_results.append(res)
+        replaced_pairs.append((n1, n2))
+        used.update((n1, n2))
     return combined_results, replaced_pairs
 
 
