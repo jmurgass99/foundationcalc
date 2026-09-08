@@ -1,4 +1,11 @@
-"""Punching shear verification per EN 1992-1-1 §6.4 (EC2).
+"""Punching shear verification for SHALLOW FOUNDATIONS / FOOTINGS per EN 1992-1-1 §6.4 (EC2).
+
+Diferenciación Arquitectónica de Dominio:
+  - Este módulo es el motor canónico autorizado para PUNZONAMIENTO EN CIMENTACIONES (deduciendo
+    la reacción neta del terreno dentro del perímetro de control y aplicando la reducción de
+    perímetro crítico para zapatas compactas a <= 2d según EC2 §6.4.4(2)).
+  - Para PUNZONAMIENTO EN LOSAS PLANAS / FORJADOS SIN VIGAS (sin terreno de apoyo), el motor
+    canónico correspondiente es `fastsap.codes.punching.check_punching`.
 
 Theory: docs/theory/03_shallow_foundations.md §3.4.1.
 Includes perimeter reduction for compact footings where a <= 2d per EC2 §6.4.4(2).

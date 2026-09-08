@@ -1,4 +1,13 @@
-"""End-to-end design of a cantilever retaining wall.
+"""End-to-end design of a cantilever retaining wall per Eurocode 7 & Eurocode 2.
+
+Diferenciación Arquitectónica de Dominio:
+  - Este módulo es el motor canónico autorizado para DISEÑO RIGUROSO EUROCÓDIGO 7
+    (enfoques DA1/1, DA1/2, estratigrafía multicapa, empujes activos/pasivos/en reposo,
+    capacidad portante por ancho efectivo de Meyerhof/Hansen/Vesic y dimensionado
+    estructural EC2 en base, puntera y talón).
+  - Para predimensionado expedito por formulación cerrada de Rankine con factores
+    globales de seguridad, el motor ligero correspondiente es
+    `fastsap.codes.retaining_wall.design_cantilever_wall`.
 
 Handles all the checks for a T-shaped cantilever wall:
 
