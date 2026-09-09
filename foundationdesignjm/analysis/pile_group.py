@@ -179,7 +179,11 @@ class PileForce:
     lateral_utilization: Optional[float]
     in_compression: bool
     tension_utilization: Optional[float] = None
-    status: CalculationStatus = CalculationStatus.CALCULADO_CUMPLE
+    #: SIN valor por defecto a proposito. Tenerlo en `CALCULADO_CUMPLE` era la
+    #: misma "omision = cumplimiento" que la Proof Obligation prohibe, solo que
+    #: escrita como default de dataclass: construir el objeto sin pensar en el
+    #: veredicto producia un veredicto favorable.
+    status: CalculationStatus = CalculationStatus.NO_CALCULADO
     missing_inputs: list[str] = field(default_factory=list)
 
 
@@ -203,8 +207,53 @@ class PileGroupResult:
     group_lateral_utilization: Optional[float]
     governing_pile: str
     all_ok: bool
-    status: CalculationStatus = CalculationStatus.CALCULADO_CUMPLE
+    #: SIN default favorable, por lo mismo que en `PileForce`.
+    status: CalculationStatus = CalculationStatus.NO_CALCULADO
     missing_inputs: list[str] = field(default_factory=list)
+
+
+def _evidencia(
+    group: "PileGroup",
+    V_kN: float,
+    H_x_kN: float,
+    H_y_kN: float,
+    M_x_kNm: float,
+    M_y_kNm: float,
+    faltan: list[str],
+) -> dict[str, bool]:
+    """Declara, condicion por condicion, que verifico ESTE calculo.
+
+    La Proof Obligation es closed-by-default: si este caller no declara, el
+    veredicto es ``NO_CALCULADO``. Asi que cada condicion sale de un predicado
+    real sobre los datos, no de un ``True`` de cortesia.
+
+    ``demand_present`` merece explicacion. Una accion total NULA sobre una
+    cimentacion no es "demanda cero verificada": es que no se aplico ninguna
+    accion, es decir, que el analisis no se llego a correr. Una zapata real
+    siempre recibe al menos la carga de su pilar. Por eso una solicitacion
+    identicamente nula se declara como demanda AUSENTE y no puede firmar -- que es
+    exactamente el caso critico que la directiva exige que nunca acabe en CUMPLE.
+    Una demanda pequeña pero no nula si es un resultado, y si puede firmar.
+
+    ``material_present`` se declara a partir de las capacidades: en este modulo el
+    dato derivado del material ES la capacidad del pilote (kN), no una clase de
+    hormigon. ``reinforcement_present`` es ``True`` porque la armadura no es un
+    input de la comprobacion de capacidad de grupo -- no se comprueba aqui, asi
+    que no puede faltar aqui; el armado del encepado se verifica en su propio
+    calculo y con su propia obligacion de prueba.
+    """
+    accion_total = abs(V_kN) + abs(H_x_kN) + abs(H_y_kN) + abs(M_x_kNm) + abs(M_y_kNm)
+    capacidades_completas = not faltan
+    return {
+        "demand_present": accion_total > 0.0,
+        "capacity_present": capacidades_completas,
+        "material_present": capacidades_completas,
+        "analysis_executed": bool(group.piles),
+        "geometry_present": bool(group.piles) and all(
+            p.diameter_m > 0.0 for p in group.piles
+        ),
+        "reinforcement_present": True,
+    }
 
 
 def distribute_loads_rigid_cap(
@@ -293,7 +342,11 @@ def distribute_loads_rigid_cap(
 
         computed = [u for u in (ax_util, tens_util, lat_util) if u is not None]
         pile_gov = max(computed) if computed else None
-        pile_status = resolve_status(pile_gov, missing_inputs=miss)
+        pile_status = resolve_status(
+            pile_gov,
+            missing_inputs=miss,
+            **_evidencia(group, V_kN, H_x_kN, H_y_kN, M_x_kNm, M_y_kNm, miss),
+        )
 
         forces.append(PileForce(
             pile_name=p.name or f"P{len(forces) + 1}",
@@ -332,7 +385,11 @@ def distribute_loads_rigid_cap(
     computed_group = [u for u in (group_ax_util, group_tens_util, group_lat_util)
                       if u is not None]
     governing = max(computed_group) if computed_group else None
-    status = resolve_status(governing, missing_inputs=missing)
+    status = resolve_status(
+        governing,
+        missing_inputs=missing,
+        **_evidencia(group, V_kN, H_x_kN, H_y_kN, M_x_kNm, M_y_kNm, missing),
+    )
     all_ok = status == CalculationStatus.CALCULADO_CUMPLE
 
     # governing_pile: el de peor utilización computada; si ninguno se pudo evaluar,
