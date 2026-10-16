@@ -141,7 +141,9 @@ class FootingFlexureDetail(BaseModel):
     l_bd_mm: float = Field(..., description="Longitud básica/diseño de anclaje EC2 §8.4.4 (mm)")
     l_avail_mm: float = Field(..., description="Longitud recta disponible en el vuelo (mm)")
     hook_required: bool = Field(False, description="Indica si se requiere patilla/gancho a 90° por anclaje")
-    status: str = Field("OK", description="Estado de verificación ('OK' o 'HOOK_REQUIRED')")
+    status: str = Field("OK", description="Estado de verificación ('OK', 'HOOK_REQUIRED' o 'NO CALCULADO')")
+    motivo_no_evaluado: str | None = Field(
+        None, description="Por qué no se comprobó la flexión (status 'NO CALCULADO')")
 
 
 def anchorage_length_ec2(
@@ -262,14 +264,39 @@ def design_footing_flexure_both_ways(
     vx_m = max((L_m - cx_m) / 2.0 + 0.15 * cx_m, 0.10)
     vy_m = max((B_m - cy_m) / 2.0 + 0.15 * cy_m, 0.10)
 
-    area_m2 = B_m * L_m
-    q_avg_kPa = max(N_Ed_kN / area_m2, 0.0)
+    # Presión de FLEXIÓN (B48, §8.19). Antes: `q_avg = max(N/A, 0)`, y los
+    # momentos Mx_Ed/My_Ed que esta función RECIBE no se usaban en ninguna parte.
+    # Con e_x = L/6 la presión de borde es el doble de la media y el plano salía
+    # con la mitad del momento. Se reutiliza la presión del PROPIO paquete
+    # (`services/footings._compute_pressures`, con sus ramas de despegue) y su
+    # regla `q_flex = q_max` («conservador para flexión», footings.py:168).
+    # Convenio de ejes, el de ese módulo y el de reaction_bridge: e_x = My/N a lo
+    # largo de L (L_x), e_y = Mx/N a lo largo de B (L_y). Una zapata cuadrada
+    # tapa un cruce de ejes: el test usa una excentricidad en UNA sola dirección.
+    from types import SimpleNamespace
+    from ..services.footings import _compute_pressures
+
+    motivo = None
+    if N_Ed_kN <= 0.0:
+        motivo = (f"N_Ed = {N_Ed_kN:+.1f} kN <= 0: no hay presión portante. La flexión "
+                  "por levantamiento (anclajes, columna a tracción) no la calcula "
+                  "este módulo; se dispone la cuantía MÍNIMA, que es un requisito "
+                  "geométrico, no un armado comprobado.")
+        q_flex_kPa = 0.0
+    else:
+        presiones, notas = _compute_pressures(SimpleNamespace(
+            L_x=L_m, L_y=B_m, N=N_Ed_kN, M_x=Mx_Ed_kNm, M_y=My_Ed_kNm))
+        q_flex_kPa = float(presiones["q_max"])
+        if not math.isfinite(q_flex_kPa):
+            motivo = ("resultante fuera de la base (e >= L/2): presión no acotada, "
+                      "flexión no calculable. " + " ".join(notas))
+            q_flex_kPa = 0.0
 
     # Momentos flectores en la sección de referencia
     # M_Ed_X (actúa sobre ancho B, brazo vx):
-    M_Ed_x = q_avg_kPa * B_m * (vx_m ** 2) / 2.0
+    M_Ed_x = q_flex_kPa * B_m * (vx_m ** 2) / 2.0
     # M_Ed_Y (actúa sobre longitud L, brazo vy):
-    M_Ed_y = q_avg_kPa * L_m * (vy_m ** 2) / 2.0
+    M_Ed_y = q_flex_kPa * L_m * (vy_m ** 2) / 2.0
 
     # 2. Diseño por flexión en X (paralelo a L)
     b_x_mm = B_m * 1000.0
@@ -293,7 +320,8 @@ def design_footing_flexure_both_ways(
         l_bd_mm=l_bd_x,
         l_avail_mm=l_avail_x,
         hook_required=hook_x,
-        status="HOOK_REQUIRED" if hook_x else "OK",
+        status="NO CALCULADO" if motivo else ("HOOK_REQUIRED" if hook_x else "OK"),
+        motivo_no_evaluado=motivo,
     )
 
     # 3. Diseño por flexión en Y (paralelo a B)
@@ -318,7 +346,8 @@ def design_footing_flexure_both_ways(
         l_bd_mm=l_bd_y,
         l_avail_mm=l_avail_y,
         hook_required=hook_y,
-        status="HOOK_REQUIRED" if hook_y else "OK",
+        status="NO CALCULADO" if motivo else ("HOOK_REQUIRED" if hook_y else "OK"),
+        motivo_no_evaluado=motivo,
     )
 
     return {"X": detail_x, "Y": detail_y}

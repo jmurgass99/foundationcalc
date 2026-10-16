@@ -170,6 +170,29 @@ def size_isolated_footing_from_reactions(
 
             case_data.append({"N": N, "ex": ex, "ey": ey, "Fh": Fh, "dcr_slide": dcr_slide})
 
+        # 1b. Deslizamiento en las combinaciones SIN axil de compresion (B48, §8.18).
+        #
+        # El bucle de arriba solo recorre `comp_rxs` (Fz > 0), que es lo correcto
+        # para presion, nucleo y Meyerhof. Pero el DESLIZAMIENTO no puede excluir
+        # las demas: una base sin axil --o traccionada-- no genera rozamiento, y
+        # si recibe cortante esa es precisamente la combinacion que desliza.
+        # Medido: {Fz 500, Fx 10} + {Fz 0.0, Fx 300} firmaba CALCULADO_CUMPLE, y
+        # el MISMO nudo con Fz = +1 (estrictamente menos desfavorable) daba
+        # FALLA: la envolvente no era monotona.
+        #
+        # Formula del propio docstring (F_h <= mu*N/FS) con N_fric = max(Fz, 0),
+        # y el MISMO suelo de 1e-9 que usa la linea de arriba: resistencia nula
+        # con cortante da un dcr no acotado (> 1), y un cortante MEDIDO nulo
+        # sigue dando 0 -- el caso sano no cae.
+        for r in rx_list:
+            if float(r.fz_kN) > 0.0:
+                continue                      # ya contada arriba
+            Fh = math.hypot(float(r.fx_kN), float(r.fy_kN))
+            if Fh > 0.0:
+                dcr_slide = Fh / 1e-9
+                if dcr_slide > max_sliding_dcr:
+                    max_sliding_dcr = dcr_slide
+
         # 2. Lado mínimo por carga axial pura (referencia)
         a_req_axial = n_max / allowable_bearing_kPa
         side_axial = max(_round_up_step(math.sqrt(a_req_axial), size_step_m), min_size_m)

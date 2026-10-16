@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Literal
+from typing import Optional, Literal
 
 
 PHI_WELD = 0.75
@@ -22,12 +22,14 @@ PHI_BASE = 0.65
 
 @dataclass
 class BasePlateResult:
-    A1_req: float       # area requerida (mm^2)
+    A1_req: Optional[float]   # area requerida (mm^2); None = no evaluado
     A1: float
     fp_max: float       # presion maxima admisible (MPa)
     m: float; n: float; l: float   # voladizos
-    tp_req: float       # espesor minimo (mm)
-    ok: bool
+    tp_req: Optional[float]   # espesor minimo (mm); None = no evaluado
+    ok: Optional[bool]        # None = fuera del alcance de DG-1 (ver motivo)
+    #: Por que no se evaluo. Patron `DesignCheckMemoir.motivo_no_evaluado`.
+    motivo_no_evaluado: Optional[str] = None
 
 
 def design_base_plate(*, Pu: float, fc: float, B: float, N: float,
@@ -36,7 +38,9 @@ def design_base_plate(*, Pu: float, fc: float, B: float, N: float,
     """Placa base bajo compresion concentrica (AISC DG-1).
 
     Args:
-        Pu: axial factorizada (N).
+        Pu: axial factorizada (N), POSITIVO = COMPRESION (el convenio de
+            `aisc_360.interaction_H1` y de SteelConnectionJm). Un Pu < 0 es un
+            LEVANTAMIENTO y queda fuera del alcance de este metodo: ver abajo.
         fc: f'c del pedestal (MPa).
         B, N: dimensiones de la placa (mm).
         d, bf: peralte y ancho de aleta del perfil (mm).
@@ -46,17 +50,36 @@ def design_base_plate(*, Pu: float, fc: float, B: float, N: float,
     A1 = B * N
     sqrt_ratio = min(math.sqrt(A2_over_A1), 2.0)
     fp_max = 0.85 * fc * sqrt_ratio       # phi se aplica abajo
-    A1_req = abs(Pu) / (PHI_BASE * 0.85 * fc * sqrt_ratio)
     m = (N - 0.95 * d) / 2.0
     n = (B - 0.80 * bf) / 2.0
+    if Pu < 0:
+        # DG-1 es, por su titulo, COMPRESION CONCENTRICA: dimensiona la placa
+        # por aplastamiento del hormigon bajo ella. Un LEVANTAMIENTO no aplasta
+        # nada: lo que gobierna es la traccion en los anclajes, la flexion de la
+        # placa por esos anclajes y el cono del hormigon, y nada de eso se
+        # calcula aqui.
+        #
+        # Antes se evaluaba con `abs(Pu)` y un levantamiento de 150 kN daba un
+        # resultado IDENTICO al de 150 kN de compresion, ok=True. Estrictamente
+        # menor: un Pu = 0 MEDIDO se sigue evaluando.
+        return BasePlateResult(
+            A1_req=None, A1=A1, fp_max=fp_max, m=m, n=n, l=max(m, n),
+            tp_req=None, ok=None,
+            motivo_no_evaluado=(
+                f"Pu = {Pu:+.4g} N < 0 (levantamiento): fuera del alcance de "
+                "AISC DG-1 (compresion concentrica). Traccion en anclajes, "
+                "flexion de placa y cono de hormigon NO evaluados"
+            ),
+        )
+    A1_req = Pu / (PHI_BASE * 0.85 * fc * sqrt_ratio)
     # n' = sqrt(d*bf)/4
     n_p = math.sqrt(d * bf) / 4.0
     # X = (4*d*bf/(d+bf)^2) * Pu/(phi*Pp)
     Pp = 0.85 * fc * A1 * sqrt_ratio
-    X = (4.0 * d * bf / (d + bf) ** 2) * abs(Pu) / max(PHI_BASE * Pp, 1e-9)
+    X = (4.0 * d * bf / (d + bf) ** 2) * Pu / max(PHI_BASE * Pp, 1e-9)
     lam = 2.0 * math.sqrt(X) / (1.0 + math.sqrt(max(1.0 - X, 0.0))) if X < 1.0 else 1.0
     l = max(m, n, lam * n_p)
-    fp = abs(Pu) / A1
+    fp = Pu / A1
     tp_req = l * math.sqrt(2.0 * fp / (0.90 * Fy_plate))
     return BasePlateResult(
         A1_req=A1_req, A1=A1, fp_max=fp_max,

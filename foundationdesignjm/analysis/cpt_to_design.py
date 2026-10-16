@@ -34,6 +34,51 @@ from .footing_settlement import (
 from .multi_layer_bc import MultiLayerBCResult, multi_layer_bearing_capacity
 
 
+def _estrato_txt(s) -> str:
+    z0, z1 = getattr(s, "z_top", getattr(s, "z_top_m", "?")), getattr(s, "z_bot", getattr(s, "z_bot_m", "?"))
+    return f"estrato {z0}-{z1} m"
+
+
+def _cu_del_estrato(s) -> float:
+    """c_u del estrato por PRESENCIA (B48, §8.29).
+
+    Antes: ``s.c_u_kPa or 40.0``. Un c_u = 0.0 MEDIDO --que el esquema admite,
+    ge=0-- se convertia en 40 kPa inventados. Medido: la misma zapata pasaba de
+    bearing_ok=False (q_Rd 6.43) a True (q_Rd 32.56). Un 0.0 medido es un dato.
+    """
+    cu = getattr(s, "c_u_kPa", None)
+    if cu is None:
+        raise ValueError(
+            f"{_estrato_txt(s)}: el correlador CPT no dio c_u para un estrato "
+            "cohesivo; no se asume ninguno (antes: 40 kPa)"
+        )
+    return float(cu)
+
+
+def _E_del_estrato(s) -> float:
+    """E del estrato, o un error que nombra el estrato (B48, §8.29).
+
+    Antes: ``s.E_MPa or 30.0`` (arena) y ``or 5.0`` (arcilla). El correlador
+    devuelve E = 0 cuando q_t <= sigma'_v0, FUERA del rango de Robertson (2009),
+    y ese 0 se convertia en un modulo inventado que ademas afecta a q_Rd: con
+    E -> 0 el factor zeta_q de Vesic cae de 1.0 a 0.43. Medido: q_Rd 51.82 ->
+    22.5, bearing_ok True -> False.
+
+    No se guarda None porque seis consumidores (informe PDF, dashboard,
+    escritorio, optimizador) hacen ``"OK" if res.bearing_ok else "FAIL"`` y un
+    None se imprimiria como FALLA: un «no calculado» disfrazado de «no cumple».
+    Se niega a construir el perfil, con el estrato nombrado.
+    """
+    E = getattr(s, "E_MPa", None)
+    if E is None or not (float(E) > 0.0):
+        raise ValueError(
+            f"{_estrato_txt(s)}: modulo E correlado = {E!r} (q_t <= sigma'_v0, fuera "
+            "del rango de Robertson 2009). No se asume ninguno (antes: 30 MPa en "
+            "arena, 5 MPa en arcilla)"
+        )
+    return float(E)
+
+
 def soil_profile_from_cpt(
     cpt: CPTProfile, n_layers: int = 5,
 ) -> SoilProfile:
@@ -54,11 +99,11 @@ def soil_profile_from_cpt(
                 cohesion=0.0,
                 unit_weight=cpt.gamma_above_wt_kN_m3,
                 saturated_unit_weight=cpt.gamma_below_wt_kN_m3,
-                youngs_modulus=s.E_MPa or 30.0,
+                youngs_modulus=_E_del_estrato(s),
                 cone_resistance_qc=s.q_t_avg_MPa,
             ))
         else:
-            cu = s.c_u_kPa or 40.0
+            cu = _cu_del_estrato(s)
             soil_layers.append(SoilLayer(
                 name=f"{s.sbt_zone.name.lower()}_{round(s.z_top, 1)}m",
                 thickness=thickness,
@@ -68,7 +113,7 @@ def soil_profile_from_cpt(
                 undrained_shear_strength=cu,
                 unit_weight=cpt.gamma_above_wt_kN_m3,
                 saturated_unit_weight=cpt.gamma_below_wt_kN_m3,
-                youngs_modulus=s.E_MPa or 5.0,
+                youngs_modulus=_E_del_estrato(s),
                 cone_resistance_qc=s.q_t_avg_MPa,
             ))
     return SoilProfile(

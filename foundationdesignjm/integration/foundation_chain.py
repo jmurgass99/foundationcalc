@@ -106,9 +106,9 @@ def foundation_chain_from_etabs(
     auto_switch_to_piles: bool = True,
 ) -> FoundationChainResult:
     """Ejecuta la cadena de dimensionado y preparación para SAFE 2022."""
-    reactions = _resolve_reactions(etabs_or_reactions, combos)
+    reactions, _asumidas = _resolve_reactions_con_procedencia(etabs_or_reactions, combos)
 
-    qa_kPa = float(soil_params.get("allowable_bearing_kPa", 200.0))
+    qa_kPa = _capacidad_admisible(soil_params)
     ks_kN_m3 = float(soil_params.get("subgrade_modulus_ks_kN_m3", 40000.0))
 
     # 1. Dimensionado geotécnico en planta
@@ -118,6 +118,7 @@ def foundation_chain_from_etabs(
         min_size_m=float(soil_params.get("min_size_m", 1.0)),
         size_step_m=float(soil_params.get("size_step_m", 0.05)),
     )
+    _estampar_asumidas(design_summary, _asumidas)
 
     # 2. Muelles Winkler, Chequeo de Punzonamiento y Cambio Automático a Pilotes
     punching_checks: dict[str, PunchingShearResult] = {}
@@ -434,7 +435,7 @@ def foundation_package(
     - Memoria de cálculo técnica en Markdown.
     - Cómputo métrico (hormigón m³, acero kg, encofrado m²).
     """
-    reactions = _resolve_reactions(etabs_or_reactions, combos)
+    reactions, _asumidas = _resolve_reactions_con_procedencia(etabs_or_reactions, combos)
     col_coords = column_coordinates or {rx.node_id: (0.0, 0.0) for rx in reactions}
 
     # 1. Dimensionado y cadena base
@@ -451,12 +452,14 @@ def foundation_package(
         min_bearing_capacity_kPa=min_bearing_capacity_kPa,
         pile_design_capacity_kN=pile_design_capacity_kN,
     )
+    # La cadena recibe ya objetos Reaction, asi que la procedencia se estampa aqui.
+    _estampar_asumidas(chain.design_summary, _asumidas)
 
     concrete = Concrete(fck=concrete_fck_MPa)
     steel = ReinforcingSteel(fyk=steel_fyk_MPa)
 
     # 2. Detección de zapatas combinadas por solape
-    qa_kPa = float(soil_params.get("allowable_bearing_kPa", 200.0))
+    qa_kPa = _capacidad_admisible(soil_params)
     combined_footings, replaced_pairs = _detect_and_design_combined_footings(
         chain.design_summary,
         col_coords,
@@ -517,11 +520,18 @@ def foundation_package(
             cx, cy = column_dimensions
 
         # Flexión en X e Y
+        # Momentos de la ENVOLVENTE (B48, §8.19): antes no se pasaban y la
+        # flexion salia con la presion media. `summary` publica la excentricidad
+        # MAXIMA sin emparejarla con su N; n_max*e_max acota por arriba el momento
+        # de cada combinacion (N_i*e_i <= n_max*e_max), asi que es conservador,
+        # no el momento de una combinacion concreta.
         rebar_both = design_footing_flexure_both_ways(
             B_m=B,
             L_m=L,
             h_m=h,
             N_Ed_kN=n_max,
+            My_Ed_kNm=n_max * float(summary.get("e_x_m", 0.0)),
+            Mx_Ed_kNm=n_max * float(summary.get("e_y_m", 0.0)),
             cx_m=cx,
             cy_m=cy,
             concrete=concrete,
@@ -619,36 +629,143 @@ def foundation_package(
     )
 
 
-def _resolve_reactions(etabs_or_reactions: Any, combos: Optional[list[str]] = None) -> list[Reaction]:
-    if hasattr(etabs_or_reactions, "get_joint_reactions"):
-        reactions: list[Reaction] = etabs_or_reactions.get_joint_reactions(combos=combos, story="Base")
-    elif isinstance(etabs_or_reactions, Sequence):
-        if len(etabs_or_reactions) > 0 and isinstance(etabs_or_reactions[0], dict):
-            reactions = [
-                Reaction(
-                    node_id=str(r.get("joint", r.get("Point", r.get("node_id", "")))),
-                    case=str(r.get("case", r.get("OutputCase", ""))),
-                    fx_kN=float(r.get("Fx", r.get("FX", 0.0))),
-                    fy_kN=float(r.get("Fy", r.get("FY", 0.0))),
-                    fz_kN=float(r.get("Fz", r.get("FZ", 0.0))),
-                    mx_kNm=float(r.get("Mx", r.get("MX", 0.0))),
-                    my_kNm=float(r.get("My", r.get("MY", 0.0))),
-                    mz_kNm=float(r.get("Mz", r.get("MZ", 0.0))),
+#: Alias por componente: los MISMOS que ya reconoce `fastsap/etabs/client.py:140-145`
+#: (incluida la cabecera CSI F1..M3, que aqui se ignoraba y dejaba una fila
+#: completa con las seis componentes a 0.0). No se inventa ninguno.
+_ALIAS_REACCION: dict[str, tuple[str, ...]] = {
+    "fx_kN": ("Fx", "FX", "F1"),
+    "fy_kN": ("Fy", "FY", "F2"),
+    "fz_kN": ("Fz", "FZ", "F3"),
+    "mx_kNm": ("Mx", "MX", "M1"),
+    "my_kNm": ("My", "MY", "M2"),
+    "mz_kNm": ("Mz", "MZ", "M3"),
+}
+#: Componentes que pueden faltar sin rechazar la fila. `fz_kN` NO: su ausencia es
+#: un hueco (§7-quinquies-ter). Rechazar las demas es la pregunta PARADA en
+#: §7-quinquies-quater; mientras tanto entran como 0.0, pero DECLARADAS.
+_TOLERABLES = {"fx_kN": "FX", "fy_kN": "FY", "mx_kNm": "MX", "my_kNm": "MY", "mz_kNm": "MZ"}
+
+
+def _leer_componente(fila: dict, claves: tuple[str, ...]) -> tuple[float, bool]:
+    """``(valor, ausente)`` buscando la clave por PRESENCIA.
+
+    Misma semantica que `fastsap.etabs_to_safe.leer_componente` (copiada: este
+    paquete no depende de fastsap, y fastsap depende de este). None, vacio, NaN
+    o no convertible cuentan como AUSENTE, no como cero; un 0.0 MEDIDO es un dato.
+    """
+    for clave in claves:
+        if clave in fila:
+            crudo = fila[clave]
+            if crudo is None or crudo == "":
+                return 0.0, True
+            try:
+                valor = float(crudo)
+            except (TypeError, ValueError):
+                return 0.0, True
+            return (0.0, True) if math.isnan(valor) else (valor, False)
+    return 0.0, True
+
+
+def _reaccion_desde_dict(r: dict) -> tuple[Reaction, set[str]]:
+    """Una fila de dict -> (Reaction, componentes asumidas a 0.0)."""
+    nodo = str(r.get("joint", r.get("Point", r.get("node_id", ""))))
+    caso = str(r.get("case", r.get("OutputCase", "")))
+    valores: dict[str, float] = {}
+    asumidas: set[str] = set()
+    for campo, claves in _ALIAS_REACCION.items():
+        valor, falta = _leer_componente(r, claves)
+        if falta:
+            if campo == "fz_kN":
+                # Mismo contrato que `etabs/client.py:124-127`: no se inventa un
+                # cero. Tampoco NO_LOAD, que ya significa «Fz MEDIDO <= 0».
+                raise ValueError(
+                    f"la reaccion del nudo {nodo!r} (caso {caso!r}) no trae un "
+                    f"Fz legible ({'/'.join(claves)}): una reaccion ausente no "
+                    "es una reaccion nula"
                 )
-                for r in etabs_or_reactions
-            ]
-        elif len(etabs_or_reactions) > 0 and isinstance(etabs_or_reactions[0], Reaction):
-            reactions = list(etabs_or_reactions)
-        else:
+            asumidas.add(_TOLERABLES[campo])
+        valores[campo] = valor
+    return Reaction(node_id=nodo, case=caso, **valores), asumidas
+
+
+def _resolve_reactions_con_procedencia(
+    etabs_or_reactions: Any, combos: Optional[list[str]] = None,
+) -> tuple[list[Reaction], dict[str, set[str]]]:
+    """Como `_resolve_reactions`, y ademas ``{nudo: componentes asumidas}`` (union
+    entre casos, como hace `combine_reactions` en fastsap)."""
+    asumidas_por_nudo: dict[str, set[str]] = {}
+    datos = etabs_or_reactions
+    # Un DataFrame entraba por la rama final y salia como lista VACIA, en silencio
+    # (medido: Fz = 800 -> []). Se lee como filas.
+    if hasattr(datos, "to_dict") and hasattr(datos, "columns"):
+        datos = datos.to_dict("records")
+
+    if hasattr(datos, "get_joint_reactions"):
+        reactions: list[Reaction] = datos.get_joint_reactions(combos=combos, story="Base")
+    elif isinstance(datos, Sequence) and not isinstance(datos, (str, bytes)):
+        if len(datos) == 0:
             reactions = []
-    else:
+        elif isinstance(datos[0], dict):
+            reactions = []
+            for r in datos:
+                rx, asumidas = _reaccion_desde_dict(r)
+                reactions.append(rx)
+                if asumidas:
+                    asumidas_por_nudo.setdefault(rx.node_id, set()).update(asumidas)
+        elif isinstance(datos[0], Reaction):
+            reactions = list(datos)
+        else:
+            raise TypeError(
+                f"reacciones de tipo {type(datos[0]).__name__} no soportadas: se "
+                "esperan dicts o Reaction. Antes salia una lista vacia sin avisar."
+            )
+    elif datos is None:
         reactions = []
+    else:
+        raise TypeError(
+            f"entrada de reacciones de tipo {type(datos).__name__} no soportada "
+            "(se esperan dicts, Reaction, un DataFrame o un cliente con "
+            "get_joint_reactions). Antes salia una lista vacia sin avisar."
+        )
 
     if combos is not None:
         combos_set = set(combos)
         reactions = [r for r in reactions if r.case in combos_set]
 
-    return reactions
+    return reactions, asumidas_por_nudo
+
+
+def _resolve_reactions(etabs_or_reactions: Any, combos: Optional[list[str]] = None) -> list[Reaction]:
+    return _resolve_reactions_con_procedencia(etabs_or_reactions, combos)[0]
+
+
+def _capacidad_admisible(soil_params: dict[str, Any]) -> float:
+    """`allowable_bearing_kPa` obligatoria: ni 200 kPa inventados ni un cero.
+
+    Antes: ``soil_params.get("allowable_bearing_kPa", 200.0)`` -- el mismo defecto
+    que B47 cerro en el hilo dorado de fastsap, aqui en la cadena de cimentacion.
+    La capacidad del suelo es un dato del proyecto; si no viene, no se dimensiona.
+    Los dos llamadores de produccion (fastsap `ai_master_pipeline` y
+    `verification_mode`) ya la pasan explicita desde su configuracion.
+    """
+    crudo = (soil_params or {}).get("allowable_bearing_kPa")
+    try:
+        qa = float(crudo)
+    except (TypeError, ValueError):
+        qa = float("nan")
+    if not math.isfinite(qa) or qa <= 0.0:
+        raise ValueError(
+            f"soil_params['allowable_bearing_kPa'] = {crudo!r}: hace falta la "
+            "capacidad admisible del suelo (numero finito > 0). No se asume ninguna."
+        )
+    return qa
+
+
+def _estampar_asumidas(design_summary: dict, asumidas_por_nudo: dict[str, set[str]]) -> None:
+    """Declara en cada resumen de zapata las componentes que entraron como 0.0."""
+    for nodo, asumidas in asumidas_por_nudo.items():
+        if nodo in design_summary and asumidas:
+            design_summary[nodo]["assumed_zero"] = sorted(asumidas)
 
 
 _log = logging.getLogger(__name__)
