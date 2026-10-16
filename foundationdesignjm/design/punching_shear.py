@@ -372,7 +372,7 @@ def punching_shear_aci318_check(
     phi_vc = phi * vc
 
     if phi_vc <= 0.0:
-        util = float("inf") if v_ug_max > 0.0 else 0.0
+        util = float("inf")
     else:
         util = v_ug_max / phi_vc
 
