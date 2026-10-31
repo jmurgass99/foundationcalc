@@ -1,7 +1,7 @@
-"""packages/FoundationDesignJm/tests/test_foundation_chain.py
+"""packages/FoundationCalc/tests/test_foundation_chain.py
 ===========================================================
 Tests de la cadena completa de cimentaciones (Carril B):
-ETABS → FoundationDesignJm → SAFE.
+ETABS → FoundationCalc → SAFE.
 
 Verifica:
 1. Resolución del defecto de signos: conservación de tracción/uplift y signos de momentos/cortantes.
@@ -16,18 +16,18 @@ import math
 from unittest.mock import MagicMock
 import pytest
 
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.loading import PointLoad
-from foundationdesignjm.design.punching_shear import punching_shear_check
-from foundationdesignjm.integration.foundation_chain import (
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.loading import PointLoad
+from foundationcalc.design.punching_shear import punching_shear_check
+from foundationcalc.integration.foundation_chain import (
     FoundationChainResult,
     foundation_chain_from_etabs,
 )
-from foundationdesignjm.reaction_bridge import (
+from foundationcalc.reaction_bridge import (
     reaction_to_point_load,
     size_isolated_footing_from_reactions,
 )
-from jmstructural_common.model import Reaction
+from foundationcalc._common.model import Reaction
 
 
 class TestFoundationChain:
@@ -203,8 +203,8 @@ class TestPunchingApplicability:
 
     def test_compact_footing_resolves_via_reduced_perimeter(self) -> None:
         """1.2x1.2x0.50 con columna 0.40: A_u1=4.14 m2 > 1.44 m2 -> resuelto vía a < 2d."""
-        from foundationdesignjm.core.geometry import Column, RectangularFoundation
-        from foundationdesignjm.design.punching_shear import punching_shear_check
+        from foundationcalc.core.geometry import Column, RectangularFoundation
+        from foundationcalc.design.punching_shear import punching_shear_check
 
         res = punching_shear_check(
             foundation=RectangularFoundation(length=1200.0, width=1200.0, thickness=500.0),
@@ -223,8 +223,8 @@ class TestPunchingApplicability:
 
     def test_benchmark_footing_stays_applicable(self) -> None:
         """El benchmark AG13 (2.5x2.5, d=0.55): A_u1=5.72 < 6.25 -> aplicable y PASS."""
-        from foundationdesignjm.core.geometry import Column, RectangularFoundation
-        from foundationdesignjm.design.punching_shear import punching_shear_check
+        from foundationcalc.core.geometry import Column, RectangularFoundation
+        from foundationcalc.design.punching_shear import punching_shear_check
 
         res = punching_shear_check(
             foundation=RectangularFoundation(length=2500.0, width=2500.0, thickness=600.0),
@@ -242,8 +242,8 @@ class TestPunchingApplicability:
 
     def test_memoria_reports_compact_footing_punching(self) -> None:
         """La memoria de la cadena reporta el chequeo EC2 6.4.4(2) para el caso compacto."""
-        from jmstructural_common.model import Reaction
-        from foundationdesignjm.integration.foundation_chain import foundation_chain_from_etabs, foundation_package
+        from foundationcalc._common.model import Reaction
+        from foundationcalc.integration.foundation_chain import foundation_chain_from_etabs, foundation_package
         import tempfile, os
 
         rx = [Reaction(node_id="1", case="ELU", fx_kN=0, fy_kN=0, fz_kN=281.1,

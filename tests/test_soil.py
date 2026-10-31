@@ -3,7 +3,7 @@
 import math
 import pytest
 
-from foundationdesignjm.core.soil import (
+from foundationcalc.core.soil import (
     SoilLayer,
     SoilProfile,
     SoilType,

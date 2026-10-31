@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
-from foundationdesignjm.design.retaining_wall import (
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
+from foundationcalc.design.retaining_wall import (
     CantileverWallDesigner,
     CantileverWallGeometry,
     RetainingWallLoading,
@@ -122,7 +122,7 @@ def test_structural_forces_positive():
 def test_active_pressure_with_coulomb_lower_than_at_rest():
     """K_a (Coulomb) < K_0 for a vertical wall with no batter — the wall yields."""
     import math
-    from foundationdesignjm.analysis.earth_pressure import K0, Ka_coulomb
+    from foundationcalc.analysis.earth_pressure import K0, Ka_coulomb
     phi = 33
     K_a = Ka_coulomb(phi, delta_deg=phi * 2.0 / 3.0)
     K_0 = K0(phi)

@@ -120,7 +120,7 @@ respectively.
 
 ---
 
-## Notes for `foundationdesignjm`
+## Notes for `foundationcalc`
 
 | Concept | Module |
 |---|---|

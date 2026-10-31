@@ -17,7 +17,7 @@ Run with:   python -m examples.strengthening_example
 
 from __future__ import annotations
 
-from foundationdesignjm.design.strengthening import (
+from foundationcalc.design.strengthening import (
     MicropileGeometry,
     MicropileSoilType,
     StructureType,
@@ -32,7 +32,7 @@ from foundationdesignjm.design.strengthening import (
 
 def main() -> None:
     print("=" * 78)
-    print("FoundationDesignJm - Strengthening of an existing footing")
+    print("FoundationCalc - Strengthening of an existing footing")
     print("=" * 78)
 
     # ----- 1. Damage assessment ------------------------------------------

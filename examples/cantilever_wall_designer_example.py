@@ -18,10 +18,10 @@ Run with:   python -m examples.cantilever_wall_designer_example
 
 from __future__ import annotations
 
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
-from foundationdesignjm.design.retaining_wall import (
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
+from foundationcalc.design.retaining_wall import (
     CantileverWallDesigner,
     CantileverWallGeometry,
     RetainingWallLoading,
@@ -59,7 +59,7 @@ def main() -> None:
     concrete = Concrete(name="C30/37", fck=30)
 
     print("=" * 78)
-    print(f"FoundationDesignJm - Cantilever wall  H={geo.H}m  B={geo.B}m")
+    print(f"FoundationCalc - Cantilever wall  H={geo.H}m  B={geo.B}m")
     print("=" * 78)
     print(f"Backfill: phi={backfill.friction_angle}deg, gamma={backfill.unit_weight} kN/m3")
     print(f"Foundation: phi={foundation.friction_angle}deg, gamma={foundation.unit_weight} kN/m3")

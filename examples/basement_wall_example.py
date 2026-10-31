@@ -18,7 +18,7 @@ Run with:   python -m examples.basement_wall_example
 
 from __future__ import annotations
 
-from foundationdesignjm.design.basement_wall import (
+from foundationcalc.design.basement_wall import (
     BasementWallDesigner,
     BasementWallGeometry,
     BasementWallLoading,
@@ -39,7 +39,7 @@ def main() -> None:
     )
 
     print("=" * 78)
-    print(f"FoundationDesignJm - Basement wall (H={geo.height} m, t={geo.thickness} m)")
+    print(f"FoundationCalc - Basement wall (H={geo.height} m, t={geo.thickness} m)")
     print("=" * 78)
     print(f"K_0 = {load.K0:.3f}  (phi={load.phi_deg} deg, OCR={load.OCR})")
     print(f"Surcharge q = {load.surcharge_q} kPa,  water = {load.water_height} m")

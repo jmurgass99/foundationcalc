@@ -1,13 +1,13 @@
-"""Tests for the FoundationDesignJm <- jmstructural-common / fastsap reaction bridge."""
+"""Tests for the FoundationCalc <- jmstructural-common / fastsap reaction bridge."""
 from __future__ import annotations
 import pytest
 
-from foundationdesignjm.reaction_bridge import (
+from foundationcalc.reaction_bridge import (
     reaction_to_point_load,
     size_isolated_footing_from_reactions,
     design_footings_from_model,
 )
-from jmstructural_common.model import (
+from foundationcalc._common.model import (
     Model,
     Node,
     Element,
@@ -20,7 +20,7 @@ from jmstructural_common.model import (
 
 class TestReactionToFoundationBridge:
     def test_reaction_to_point_load_conversion(self) -> None:
-        """Canonical Reaction transforms into FoundationDesignJm PointLoad correctly."""
+        """Canonical Reaction transforms into FoundationCalc PointLoad correctly."""
         rx = Reaction(
             node_id="N1",
             fx_kN=15.0,

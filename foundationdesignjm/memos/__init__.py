@@ -1,5 +1,0 @@
-"""Memorias de calculo handcalcs para FoundationDesignJm."""
-from __future__ import annotations
-from .zapata_ec7 import footing_ec7_bearing_memo, FootingBearingResult
-
-__all__ = ["footing_ec7_bearing_memo", "FootingBearingResult"]

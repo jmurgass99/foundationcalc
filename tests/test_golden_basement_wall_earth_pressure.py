@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import math
 import pytest
-from foundationdesignjm.design.basement_wall import (
+from foundationcalc.design.basement_wall import (
     evaluate_wall_stability_coulomb_rankine,
 )
 

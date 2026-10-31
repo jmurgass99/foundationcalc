@@ -3,14 +3,16 @@
 
 CAMPAÑA AG37 — Bloque 2c: Gazetas SSI ignorado frente a simplificación escalar Winkler.
 Mide la discrepancia de rigidez lateral y rotacional entre:
-  1. Winkler escalar (FoundationDesignJm/fastsap_winkler.py: Kx = Ky = 0.5 * Kz)
+  1. Winkler escalar (FoundationCalc/fastsap_winkler.py: Kx = Ky = 0.5 * Kz)
   2. Impedancias estáticas elásticas de Gazetas (1991) (GeoJm/ssi_springs.py)
 """
 from __future__ import annotations
+import pytest as _pytest_skip
+_pytest_skip.importorskip("terzaghi")  # dependencia externa opcional: sin ella estos tests se omiten
 
 import pytest
-from geojm.gazetas_springs import GazetasInput, evaluate_gazetas
-from foundationdesignjm.integration.fastsap_winkler import WinklerSpring
+from terzaghi.gazetas_springs import GazetasInput, evaluate_gazetas
+from foundationcalc.integration.fastsap_winkler import WinklerSpring
 
 
 class TestWinklerVsGazetasSSI:

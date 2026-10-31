@@ -1,7 +1,7 @@
 """Tests strip footing memo."""
 import pytest
 
-from foundationdesignjm.memos.zapata_corrida import (
+from foundationcalc.memos.zapata_corrida import (
     StripFootingInput, render_strip_footing_memo,
 )
 

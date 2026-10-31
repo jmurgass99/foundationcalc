@@ -243,7 +243,7 @@ Use ξ factors (Annex A, tables A.9–A.11) to convert mean & min values from te
 
 ---
 
-## Notes for `foundationdesignjm`
+## Notes for `foundationcalc`
 
 The example will be used as a **regression test** for the bearing-capacity module. Expected numbers for the pad footing on dry sand:
 - DA1-C1: q_ult = 903.5 kPa, q_Rd = 903.5 kPa, Λ = 54 %.

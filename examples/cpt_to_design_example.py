@@ -17,10 +17,10 @@ Run with:   python -m examples.cpt_to_design_example
 
 from __future__ import annotations
 
-from foundationdesignjm.analysis.cpt import CPTProfile, CPTReading
-from foundationdesignjm.analysis.cpt_to_design import design_footing_from_cpt
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.geometry import RectangularFoundation
+from foundationcalc.analysis.cpt import CPTProfile, CPTReading
+from foundationcalc.analysis.cpt_to_design import design_footing_from_cpt
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.geometry import RectangularFoundation
 
 
 def _build_cpt() -> CPTProfile:
@@ -47,7 +47,7 @@ def main() -> None:
     )
 
     print("=" * 78)
-    print("FoundationDesignJm - End-to-end footing design from CPT data")
+    print("FoundationCalc - End-to-end footing design from CPT data")
     print("=" * 78)
     print(f"CPT log:       {len(cpt.readings)} readings, depth 0.5 - 15 m, WT at 2.5 m")
     print(f"Footing:       {pad.width_m} x {pad.length_m} m, founded at 1.5 m")

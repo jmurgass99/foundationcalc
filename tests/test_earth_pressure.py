@@ -3,7 +3,7 @@
 import math
 import pytest
 
-from foundationdesignjm.analysis.earth_pressure import (
+from foundationcalc.analysis.earth_pressure import (
     K0,
     Ka_coulomb,
     Ka_rankine,

@@ -24,7 +24,7 @@ def tk_root():
 
 
 def test_isolated_footing_page_constructs(tk_root):
-    from foundationdesignjm.desktop.pages_mvc.isolated_footing_page import (
+    from foundationcalc.desktop.pages_mvc.isolated_footing_page import (
         IsolatedFootingPage,
     )
     p = IsolatedFootingPage(tk_root)
@@ -33,7 +33,7 @@ def test_isolated_footing_page_constructs(tk_root):
 
 
 def test_mononobe_okabe_page_constructs(tk_root):
-    from foundationdesignjm.desktop.pages_mvc.mononobe_okabe_page import (
+    from foundationcalc.desktop.pages_mvc.mononobe_okabe_page import (
         MononobeOkabePage,
     )
     p = MononobeOkabePage(tk_root)
@@ -41,7 +41,7 @@ def test_mononobe_okabe_page_constructs(tk_root):
 
 
 def test_bearing_capacity_page_constructs(tk_root):
-    from foundationdesignjm.desktop.pages_mvc.bearing_capacity_page import (
+    from foundationcalc.desktop.pages_mvc.bearing_capacity_page import (
         BearingCapacityPage,
     )
     p = BearingCapacityPage(tk_root)
@@ -50,7 +50,7 @@ def test_bearing_capacity_page_constructs(tk_root):
 
 
 def test_pages_mvc_re_export():
-    from foundationdesignjm.desktop.pages_mvc import (
+    from foundationcalc.desktop.pages_mvc import (
         IsolatedFootingPage, MononobeOkabePage, BearingCapacityPage,
     )
     assert IsolatedFootingPage is not None

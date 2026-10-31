@@ -1,6 +1,6 @@
 """Tests for buoyancy_check."""
 import pytest
-from foundationdesignjm.design.buoyancy_check import (
+from foundationcalc.design.buoyancy_check import (
     BuoyancyInput, check_buoyancy, required_ballast_kN,
 )
 

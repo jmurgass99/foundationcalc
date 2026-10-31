@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import os
 
-from foundationdesignjm.analysis.mat_foundation import MatFoundationSolver
-from foundationdesignjm.utils import export_mat_to_json, export_mat_to_safe
+from foundationcalc.analysis.mat_foundation import MatFoundationSolver
+from foundationcalc.utils import export_mat_to_json, export_mat_to_safe
 
 
 def _build_small_mat() -> MatFoundationSolver:

@@ -1,7 +1,7 @@
-"""CONSOLIDACIÓN DE CAPACIDAD PORTANTE (BLOQUE D) — FoundationDesignJm services.
+"""CONSOLIDACIÓN DE CAPACIDAD PORTANTE (BLOQUE D) — FoundationCalc services.
 
 Verifica la delegación hacia la implementación canónica
-``foundationdesignjm.analysis.bearing_capacity`` (EN 1997-1:2004 Anexo D),
+``foundationcalc.analysis.bearing_capacity`` (EN 1997-1:2004 Anexo D),
 asevera la divergencia medida frente a W00675 §4.3 DA1-C1,
 y prueba que water_table ya no es un parámetro silenciosamente ignorado (D.2).
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 import warnings
 
-from foundationdesignjm.services.bearing import (
+from foundationcalc.services.bearing import (
     SoilLayerSpec,
     BearingInput,
     BearingResult,

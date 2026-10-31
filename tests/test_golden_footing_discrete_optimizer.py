@@ -7,7 +7,7 @@ Objetivo y Aserción Obligatoria:
 from __future__ import annotations
 
 import pytest
-from foundationdesignjm.services.footings import (
+from foundationcalc.services.footings import (
     optimize_isolated_footing_discrete_grid,
 )
 

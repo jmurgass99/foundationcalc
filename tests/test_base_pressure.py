@@ -2,12 +2,12 @@
 
 import pytest
 
-from foundationdesignjm.analysis.base_pressure import (
+from foundationcalc.analysis.base_pressure import (
     BasePressureAnalysis,
     PressureRegime,
 )
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.loading import (
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.loading import (
     CombinationEntry,
     LoadCombination,
     LoadType,

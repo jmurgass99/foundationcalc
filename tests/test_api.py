@@ -5,7 +5,7 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from foundationdesignjm.api import app
+from foundationcalc.api import app
 
 
 @pytest.fixture(scope="module")

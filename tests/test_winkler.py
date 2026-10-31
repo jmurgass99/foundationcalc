@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.analysis.winkler import (
+from foundationcalc.analysis.winkler import (
     FootingGeometry,
     SoilLayer,
     WinklerStiffness,
@@ -97,7 +97,7 @@ def test_export_winkler_springs_with_mock():
 
     fake = SimpleNamespace(SapModel=_SapModel)
 
-    from foundationdesignjm.integration.fastsap_bridge import (
+    from foundationcalc.integration.fastsap_bridge import (
         FastSAPFoundationPipeline,
     )
 

@@ -14,7 +14,7 @@ Run with:   python -m examples.mat_foundation_example
 
 from __future__ import annotations
 
-from foundationdesignjm.analysis.mat_foundation import MatFoundationSolver
+from foundationcalc.analysis.mat_foundation import MatFoundationSolver
 
 
 def build_solver() -> MatFoundationSolver:
@@ -49,7 +49,7 @@ def build_solver() -> MatFoundationSolver:
 def main() -> None:
     mat, columns = build_solver()
     print("=" * 78)
-    print(f"FoundationDesignJm - Mat foundation 12.0 x 10.0 x 0.70 m")
+    print(f"FoundationCalc - Mat foundation 12.0 x 10.0 x 0.70 m")
     print("=" * 78)
     print(f"Mesh: {mat.nx} x {mat.ny} elements ({mat.n_nodes} nodes, "
           f"{mat.n_dofs} DOFs)")
@@ -101,7 +101,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Exports
     # ------------------------------------------------------------------
-    from foundationdesignjm.utils import (
+    from foundationcalc.utils import (
         export_mat_to_json,
         export_mat_to_safe,
     )

@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from foundationdesignjm.design.basement_wall import (
+from foundationcalc.design.basement_wall import (
     BasementWallDesigner,
     BasementWallGeometry,
     BasementWallLoading,

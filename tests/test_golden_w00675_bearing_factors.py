@@ -48,13 +48,13 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.bearing_capacity import (
+from foundationcalc.analysis.bearing_capacity import (
     BearingCapacityFormula,
     bearing_capacity_factors,
     drained_bearing_capacity,
 )
-from foundationdesignjm.core.geometry import FootingType, RectangularFoundation
-from foundationdesignjm.core.soil import SoilLayer, SoilType
+from foundationcalc.core.geometry import FootingType, RectangularFoundation
+from foundationcalc.core.soil import SoilLayer, SoilType
 
 
 # --- W00675 tabulated bearing-capacity factors (phi -> Nq, Nc, Ngamma) -------

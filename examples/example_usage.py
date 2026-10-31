@@ -1,6 +1,6 @@
 """Quick example — central pad footing on dry sand, EC7 DA1 and DA2 checks."""
 
-from foundationdesignjm import (
+from foundationcalc import (
     BasePressureAnalysis,
     Column,
     CombinationEntry,
@@ -39,7 +39,7 @@ sand = SoilLayer(
 )
 
 print("=" * 70)
-print("FoundationDesignJm - Pad footing on dry sand (EC7 example)")
+print("FoundationCalc - Pad footing on dry sand (EC7 example)")
 print("=" * 70)
 print(f"Footing: {fdn.length/1000:.1f} x {fdn.width/1000:.1f} x {fdn.thickness/1000:.2f} m")
 print(f"  embedment depth: {fdn.depth_m:.2f} m, area: {fdn.area:.2f} m2")

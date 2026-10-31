@@ -7,8 +7,8 @@ Verifica que size_isolated_footing_from_reactions no ignore mx_kNm, my_kNm, fx_k
 from __future__ import annotations
 
 import pytest
-from foundationdesignjm.reaction_bridge import size_isolated_footing_from_reactions
-from jmstructural_common.model import Reaction
+from foundationcalc.reaction_bridge import size_isolated_footing_from_reactions
+from foundationcalc._common.model import Reaction
 
 
 class TestReactionBridgeOverturningAndSliding:

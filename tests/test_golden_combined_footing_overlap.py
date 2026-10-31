@@ -30,12 +30,12 @@ from __future__ import annotations
 
 import math
 import pytest
-from jmstructural_common.model import Reaction
-from foundationdesignjm.integration.foundation_chain import (
+from foundationcalc._common.model import Reaction
+from foundationcalc.integration.foundation_chain import (
     foundation_package,
     _detect_and_design_combined_footings,
 )
-from foundationdesignjm.core.material import Concrete, ReinforcingSteel
+from foundationcalc.core.material import Concrete, ReinforcingSteel
 
 
 def test_golden_combined_footing_overlap_detection_and_substitution():

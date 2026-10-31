@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.design.strengthening import (
+from foundationcalc.design.strengthening import (
     MicropileGeometry,
     MicropileSoilType,
     StructureType,

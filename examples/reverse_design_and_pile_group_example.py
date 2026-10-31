@@ -18,17 +18,17 @@ from __future__ import annotations
 
 import os
 
-from foundationdesignjm.analysis.cpt import CPTProfile, CPTReading
-from foundationdesignjm.analysis.cpt_to_design import design_footing_from_cpt
-from foundationdesignjm.analysis.pile_group import (
+from foundationcalc.analysis.cpt import CPTProfile, CPTReading
+from foundationcalc.analysis.cpt_to_design import design_footing_from_cpt
+from foundationcalc.analysis.pile_group import (
     distribute_loads_rigid_cap, rectangular_group,
 )
-from foundationdesignjm.analysis.reverse_design import (
+from foundationcalc.analysis.reverse_design import (
     CostModel, OptimizationGoal, optimize_footing_dimensions,
 )
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.geometry import RectangularFoundation
-from foundationdesignjm.utils.pdf_report import (
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.geometry import RectangularFoundation
+from foundationcalc.utils.pdf_report import (
     ReportMeta, report_cpt_to_design,
 )
 
@@ -50,7 +50,7 @@ def _cpt() -> CPTProfile:
 def main() -> None:
     os.makedirs("out", exist_ok=True)
     print("=" * 78)
-    print("FoundationDesignJm - Reverse design + pile group")
+    print("FoundationCalc - Reverse design + pile group")
     print("=" * 78)
 
     # --------------- 1. Reverse design --------------------------------

@@ -2,7 +2,7 @@
 from __future__ import annotations
 import pytest
 
-from foundationdesignjm.exceptions import (
+from foundationcalc.exceptions import (
     FoundationError, GeotechError, DesignError, CodeError,
     ConvergenceError, FastSAPBridgeError,
     DependencyError, ConfigurationError,
@@ -44,7 +44,7 @@ def test_dependency_error_distinct():
 
 def test_can_reexport_from_package():
     """Las excepciones se exportan desde el namespace raiz del paquete."""
-    import foundationdesignjm as fdj
+    import foundationcalc as fdj
     assert fdj.FoundationError is FoundationError
     assert fdj.GeotechError is GeotechError
     assert fdj.ConvergenceError is ConvergenceError

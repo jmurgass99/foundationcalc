@@ -6,29 +6,29 @@ import os
 
 import pytest
 
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
-from foundationdesignjm.design.anchored_wall import (
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
+from foundationcalc.design.anchored_wall import (
     AnchorLevel, AnchorMode, AnchoredWallDesigner, AnchoredWallGeometry, AnchoredWallLoading,
 )
-from foundationdesignjm.design.combined_footing import (
+from foundationcalc.design.combined_footing import (
     CombinedFootingInputs, design_combined_footing,
 )
-from foundationdesignjm.design.counterfort_wall import (
+from foundationcalc.design.counterfort_wall import (
     CounterfortWallDesigner, CounterfortWallGeometry,
 )
-from foundationdesignjm.design.diaphragm_wall import (
+from foundationcalc.design.diaphragm_wall import (
     DiaphragmWallDesigner, DiaphragmWallGeometry, DiaphragmWallLoading,
 )
-from foundationdesignjm.design.gravity_wall import (
+from foundationcalc.design.gravity_wall import (
     GravityWallDesigner, GravityWallGeometry, GravityWallLoading,
     GravityWallMaterial,
 )
-from foundationdesignjm.design.mse_wall import (
+from foundationcalc.design.mse_wall import (
     MSELayer, MSELoading, MSEReinforcementType, MSEWallDesigner, MSEWallGeometry,
 )
-from foundationdesignjm.design.retaining_wall import RetainingWallLoading
-from foundationdesignjm.utils.dxf_export import export_footing_dxf
+from foundationcalc.design.retaining_wall import RetainingWallLoading
+from foundationcalc.utils.dxf_export import export_footing_dxf
 
 
 # ----------------------------------------------------------- gravity wall

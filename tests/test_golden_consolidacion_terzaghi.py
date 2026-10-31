@@ -1,6 +1,6 @@
 """GOLDEN — curva U vs Tv de la consolidacion 1D de Terzaghi.
 
-Modulo bajo prueba: ``foundationdesignjm.analysis.consolidacion_1d``.
+Modulo bajo prueba: ``foundationcalc.analysis.consolidacion_1d``.
 
 FUENTE (solucion en serie publicada + su tabla):
     Terzaghi, K. (1943), "Theoretical Soil Mechanics", Wiley, cap. XIII
@@ -44,7 +44,7 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.consolidacion_1d import (
+from foundationcalc.analysis.consolidacion_1d import (
     ConsolidationInput,
     Tv_from_U,
     U_from_Tv,

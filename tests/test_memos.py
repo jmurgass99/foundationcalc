@@ -1,10 +1,10 @@
-"""Tests del modulo foundationdesignjm.memos."""
+"""Tests del modulo foundationcalc.memos."""
 from __future__ import annotations
 import pytest
 
 handcalcs = pytest.importorskip("handcalcs")
 
-from foundationdesignjm.memos import footing_ec7_bearing_memo
+from foundationcalc.memos import footing_ec7_bearing_memo
 
 
 def test_footing_bearing_safe_case():

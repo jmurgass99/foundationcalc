@@ -3,7 +3,7 @@ import pytest
 
 
 def test_muro_contencion_memoria():
-    from foundationdesignjm.memos.muro_contencion import (
+    from foundationcalc.memos.muro_contencion import (
         MuroContencionInput, memoria_muro, rankine_ka, coulomb_ka,
     )
     Ka = rankine_ka(30)
@@ -16,13 +16,13 @@ def test_muro_contencion_memoria():
 
 
 def test_muro_contencion_con_sobrecarga():
-    from foundationdesignjm.memos.muro_contencion import MuroContencionInput, memoria_muro
+    from foundationcalc.memos.muro_contencion import MuroContencionInput, memoria_muro
     res = memoria_muro(MuroContencionInput(H_m=3.0, q_surch_kPa=10))
     assert res.Ea_rankine_kN_m > 0
 
 
 def test_nsr10_titulo_h_estatica():
-    from foundationdesignjm.memos.nsr10_titulo_h import NSR10HInput, memoria_nsr10_h
+    from foundationcalc.memos.nsr10_titulo_h import NSR10HInput, memoria_nsr10_h
     res = memoria_nsr10_h(NSR10HInput(B_m=2, L_m=2, Df_m=1.5, Q_kN=400))
     assert res.q_ult_kPa > 0
     assert res.FS == 3.0
@@ -30,13 +30,13 @@ def test_nsr10_titulo_h_estatica():
 
 
 def test_nsr10_sismica_fs2():
-    from foundationdesignjm.memos.nsr10_titulo_h import NSR10HInput, memoria_nsr10_h
+    from foundationcalc.memos.nsr10_titulo_h import NSR10HInput, memoria_nsr10_h
     res = memoria_nsr10_h(NSR10HInput(B_m=2, L_m=2, Df_m=1.5, Q_kN=400, es_sismica=True))
     assert res.FS == 2.0
 
 
 def test_consolidacion_1d():
-    from foundationdesignjm.analysis.consolidacion_1d import (
+    from foundationcalc.analysis.consolidacion_1d import (
         ConsolidationInput, consolidate, U_from_Tv,
     )
     res = consolidate(ConsolidationInput(
@@ -48,14 +48,14 @@ def test_consolidacion_1d():
 
 
 def test_consolidacion_codigo_invalido():
-    from foundationdesignjm.analysis.consolidacion_1d import ConsolidationInput, consolidate
+    from foundationcalc.analysis.consolidacion_1d import ConsolidationInput, consolidate
     with pytest.raises(ValueError):
         consolidate(ConsolidationInput(H_layer_m=4, sigma_v0_kPa=100,
                                         delta_sigma_kPa=80, Cc=0.3, code="ZZ"))
 
 
 def test_boussinesq_punto():
-    from foundationdesignjm.analysis.boussinesq import (
+    from foundationcalc.analysis.boussinesq import (
         BoussinesqPoint, sigma_z_point, BoussinesqRect, sigma_z_rect_center,
         stress_profile,
     )
@@ -68,14 +68,14 @@ def test_boussinesq_punto():
 
 
 def test_boussinesq_decae_con_profundidad():
-    from foundationdesignjm.analysis.boussinesq import BoussinesqRect, sigma_z_rect_center
+    from foundationcalc.analysis.boussinesq import BoussinesqRect, sigma_z_rect_center
     s1 = sigma_z_rect_center(BoussinesqRect(qo_kPa=100, B_m=2, L_m=2, z_m=1))
     s5 = sigma_z_rect_center(BoussinesqRect(qo_kPa=100, B_m=2, L_m=2, z_m=5))
     assert s5 < s1
 
 
 def test_friccion_negativa():
-    from foundationdesignjm.analysis.friccion_negativa import (
+    from foundationcalc.analysis.friccion_negativa import (
         Layer, FriccionNegativaInput, downdrag,
     )
     inp = FriccionNegativaInput(
@@ -94,14 +94,14 @@ def test_friccion_negativa():
 
 
 def test_suelo_expansivo():
-    from foundationdesignjm.analysis.suelo_expansivo import ExpansiveInput, expansive_assessment
+    from foundationcalc.analysis.suelo_expansivo import ExpansiveInput, expansive_assessment
     res = expansive_assessment(ExpansiveInput(PI=40, w_natural_pct=15, w_final_pct=35, code="US"))
     assert res.risk in {"BAJO", "MEDIO", "ALTO", "MUY ALTO"}
     assert res.swelling_pressure_kPa > 0
 
 
 def test_pilote_excentrico():
-    from foundationdesignjm.analysis.pilote_excentrico import (
+    from foundationcalc.analysis.pilote_excentrico import (
         PiloteExcentricoInput, evaluar,
     )
     res = evaluar(PiloteExcentricoInput(
@@ -112,14 +112,14 @@ def test_pilote_excentrico():
 
 
 def test_quantities():
-    from foundationdesignjm.quantities import QuantitiesInput, quantities
+    from foundationcalc.quantities import QuantitiesInput, quantities
     res = quantities(QuantitiesInput(B_m=2, L_m=3, H_m=0.5, code="EU"))
     assert res.volumen_hormigon_m3 == pytest.approx(3.0)
     assert res.masa_acero_kg == pytest.approx(240.0)
 
 
 def test_dxf_armado_no_dxfjm():
-    from foundationdesignjm.integration.dxf_armado import (
+    from foundationcalc.integration.dxf_armado import (
         ArmadoZapataDXF, export_armado_zapata,
     )
     arm = ArmadoZapataDXF(B_m=2, L_m=2, H_m=0.5, n_x=6, n_y=6, db_x_mm=12, db_y_mm=12)
@@ -129,7 +129,7 @@ def test_dxf_armado_no_dxfjm():
 
 
 def test_fastsap_winkler_dry_run():
-    from foundationdesignjm.integration.fastsap_winkler import (
+    from foundationcalc.integration.fastsap_winkler import (
         WinklerSpring, FastSAPWinklerExporter,
     )
     springs = [WinklerSpring(f"J{i}", 1000, 1000, 5000) for i in range(3)]
@@ -141,7 +141,7 @@ def test_fastsap_winkler_dry_run():
 
 def test_fastsap_winkler_mock():
     from unittest.mock import MagicMock
-    from foundationdesignjm.integration.fastsap_winkler import (
+    from foundationcalc.integration.fastsap_winkler import (
         WinklerSpring, FastSAPWinklerExporter,
     )
     mock = MagicMock()

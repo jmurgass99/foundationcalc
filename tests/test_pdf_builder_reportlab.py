@@ -1,8 +1,8 @@
-"""Tests for FoundationDesignJm PDF report generation with reportlab."""
+"""Tests for FoundationCalc PDF report generation with reportlab."""
 import tempfile
 from pathlib import Path
 import pytest
-from foundationdesignjm.reports.pdf_builder import Report
+from foundationcalc.reports.pdf_builder import Report
 
 
 def test_pdf_builder_generates_valid_pdf_file():

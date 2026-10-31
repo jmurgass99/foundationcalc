@@ -6,27 +6,27 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.cpt import CPTProfile, CPTReading
-from foundationdesignjm.analysis.cpt_to_design import (
+from foundationcalc.analysis.cpt import CPTProfile, CPTReading
+from foundationcalc.analysis.cpt_to_design import (
     design_footing_from_cpt,
     soil_profile_from_cpt,
 )
-from foundationdesignjm.analysis.failure_mode import (
+from foundationcalc.analysis.failure_mode import (
     FailureMode,
     classify_failure_mode,
     critical_rigidity_index,
     rigidity_index,
     vesic_reduction_factors,
 )
-from foundationdesignjm.analysis.footing_settlement import (
+from foundationcalc.analysis.footing_settlement import (
     total_footing_settlement,
 )
-from foundationdesignjm.analysis.multi_layer_bc import (
+from foundationcalc.analysis.multi_layer_bc import (
     multi_layer_bearing_capacity,
 )
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.geometry import RectangularFoundation
-from foundationdesignjm.core.soil import SoilLayer, SoilProfile, SoilType
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.geometry import RectangularFoundation
+from foundationcalc.core.soil import SoilLayer, SoilProfile, SoilType
 
 
 # ------------------------------------------------------------- failure mode

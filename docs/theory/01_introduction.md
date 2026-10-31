@@ -112,7 +112,7 @@ Foundations carry **higher safety factors** than the superstructure because:
 
 ---
 
-## Notes for `foundationdesignjm`
+## Notes for `foundationcalc`
 
 This section maps to the following modules to be implemented / expanded:
 

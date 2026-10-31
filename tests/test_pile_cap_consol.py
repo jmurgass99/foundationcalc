@@ -1,10 +1,10 @@
 """Tests pile cap + consolidación 1D."""
 import pytest
 
-from foundationdesignjm.memos.pile_cap import (
+from foundationcalc.memos.pile_cap import (
     PileCapInput, render_pile_cap_memo,
 )
-from foundationdesignjm.consolidacion_1d import (
+from foundationcalc.consolidacion_1d import (
     ConsolidationInput, evaluate_consolidation,
 )
 
@@ -30,7 +30,7 @@ class TestPileCapBromsMeyerhof:
     """FD-002: Broms / Meyerhof / group efficiency pile-cap memo."""
 
     def test_safe_case_clay(self):
-        from foundationdesignjm.memos.pile_cap import (
+        from foundationcalc.memos.pile_cap import (
             BromsMeyerhofInput, render_pile_cap_broms_meyerhof_memo,
         )
         inp = BromsMeyerhofInput(
@@ -51,7 +51,7 @@ class TestPileCapBromsMeyerhof:
         assert len(r.markdown) > 0
 
     def test_safe_case_sand(self):
-        from foundationdesignjm.memos.pile_cap import (
+        from foundationcalc.memos.pile_cap import (
             BromsMeyerhofInput, render_pile_cap_broms_meyerhof_memo,
         )
         r = render_pile_cap_broms_meyerhof_memo(BromsMeyerhofInput(
@@ -67,7 +67,7 @@ class TestPileCapBromsMeyerhof:
         assert r.eta_group > 0
 
     def test_overloaded_group_fails(self):
-        from foundationdesignjm.memos.pile_cap import (
+        from foundationcalc.memos.pile_cap import (
             BromsMeyerhofInput, render_pile_cap_broms_meyerhof_memo,
         )
         r = render_pile_cap_broms_meyerhof_memo(BromsMeyerhofInput(
@@ -76,7 +76,7 @@ class TestPileCapBromsMeyerhof:
         assert not r.is_safe_axial
 
     def test_punching_thin_cap_fails(self):
-        from foundationdesignjm.memos.pile_cap import (
+        from foundationcalc.memos.pile_cap import (
             BromsMeyerhofInput, render_pile_cap_broms_meyerhof_memo,
         )
         r = render_pile_cap_broms_meyerhof_memo(BromsMeyerhofInput(
@@ -85,7 +85,7 @@ class TestPileCapBromsMeyerhof:
         assert not r.is_safe_punching
 
     def test_markdown_not_empty(self):
-        from foundationdesignjm.memos.pile_cap import (
+        from foundationcalc.memos.pile_cap import (
             BromsMeyerhofInput, render_pile_cap_broms_meyerhof_memo,
         )
         r = render_pile_cap_broms_meyerhof_memo(BromsMeyerhofInput())
@@ -95,7 +95,7 @@ class TestPileCapBromsMeyerhof:
 
     def test_numerical_example(self):
         """Verify numerical values for a known configuration."""
-        from foundationdesignjm.memos.pile_cap import (
+        from foundationcalc.memos.pile_cap import (
             BromsMeyerhofInput, render_pile_cap_broms_meyerhof_memo,
         )
         r = render_pile_cap_broms_meyerhof_memo(BromsMeyerhofInput(

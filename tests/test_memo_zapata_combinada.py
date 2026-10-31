@@ -1,7 +1,7 @@
 """Tests memo zapata combinada."""
 import pytest
 
-from foundationdesignjm.memos.zapata_combinada import (
+from foundationcalc.memos.zapata_combinada import (
     CombinedFootingInput, render_combined_footing_memo,
 )
 

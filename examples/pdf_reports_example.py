@@ -18,24 +18,24 @@ from __future__ import annotations
 
 import os
 
-from foundationdesignjm.analysis.crane import (
+from foundationcalc.analysis.crane import (
     CraneLoadCase, CraneLoadState, design_envelope,
 )
-from foundationdesignjm.analysis.mat_foundation import MatFoundationSolver
-from foundationdesignjm.analysis.seismic_footing import (
+from foundationcalc.analysis.mat_foundation import MatFoundationSolver
+from foundationcalc.analysis.seismic_footing import (
     SeismicAction, seismic_footing_check,
 )
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
-from foundationdesignjm.design.basement_wall import (
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
+from foundationcalc.design.basement_wall import (
     BasementWallDesigner, BasementWallGeometry, BasementWallLoading,
 )
-from foundationdesignjm.design.retaining_wall import (
+from foundationcalc.design.retaining_wall import (
     CantileverWallDesigner, CantileverWallGeometry, RetainingWallLoading,
 )
-from foundationdesignjm.utils.pdf_report import (
+from foundationcalc.utils.pdf_report import (
     ReportMeta,
     report_basement_wall,
     report_crane,

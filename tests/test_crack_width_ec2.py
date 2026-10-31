@@ -1,7 +1,7 @@
 """Tests EN 1992-1-1 §7.3 crack width."""
 import pytest
 
-from foundationdesignjm.crack_width_ec2 import CrackWidthInput, crack_width_EC2
+from foundationcalc.crack_width_ec2 import CrackWidthInput, crack_width_EC2
 
 
 def test_caso_estandar_within_limit():

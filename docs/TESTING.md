@@ -1,8 +1,8 @@
-# FoundationDesignJm - Testing Guide
+# FoundationCalc - Testing Guide
 
 ## Filosofia
 
-FoundationDesignJm es **safety-critical**: sus resultados gobiernan
+FoundationCalc es **safety-critical**: sus resultados gobiernan
 decisiones de seguridad estructural reales. Por eso:
 
 - **Coverage gate inicial: 70%** (mas alto que otros satelites).

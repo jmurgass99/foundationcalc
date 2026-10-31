@@ -4,7 +4,7 @@ Third of the three ACI-17 anchorage twins in this monorepo. The defect was
 fixed first in ``fastsap.codes.anchorage`` (see
 ``packages/fastsap/tests/test_anchorage_absence_and_steel_shear.py``), which
 turned out to have zero production importers; this module is reached through
-``foundationdesignjm.codes.__init__`` as the public ``aci_anchor_shear``.
+``foundationcalc.codes.__init__`` as the public ``aci_anchor_shear``.
 
 The steel term is ``Vsa = 0.6 * n_anchors * Ase_V * futa`` — ACI 318-19
 §17.7.1.2 **case (b)** only, under a comment that said no more than
@@ -48,8 +48,8 @@ import pathlib
 
 import pytest
 
-from foundationdesignjm.codes import aci318_anchorage, aci_anchor_shear
-from foundationdesignjm.codes.aci318_anchorage import shear_capacity
+from foundationcalc.codes import aci318_anchorage, aci_anchor_shear
+from foundationcalc.codes.aci318_anchorage import shear_capacity
 
 
 BASE = dict(Ase_V=157.0, futa=400.0, fc=28.0, hef=200.0, ca1=300.0, da=16.0)
@@ -220,7 +220,7 @@ def test_welded_studs_are_declared_in_scope_of_the_module_but_not_of_the_formula
 
 
 def test_public_re_export_carries_the_same_declared_scope():
-    """``foundationdesignjm.codes`` re-exports this as ``aci_anchor_shear``,
+    """``foundationcalc.codes`` re-exports this as ``aci_anchor_shear``,
     and that alias is what ``__all__`` advertises. A wrapper introduced
     later would silently strip the declared limitations from the name
     callers actually import.

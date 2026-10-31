@@ -1,85 +1,57 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "foundationdesignjm"
-version = "0.2.0"
-description = "Eurocode-based foundation design library (shallow, piles, walls, seismic)."
+name = "foundationcalc"
+version = "1.0.0"
+description = "Foundation design to EN 1997-1, EN 1998-5, ACI 318 and NSR-10: bearing capacity and settlement, isolated, combined and strap footings, mat foundations (Winkler), pile capacity and pile groups, pile caps, retaining, basement, counterfort, MSE and diaphragm walls, punching shear, reinforcement and PDF reports."
 readme = "README.md"
-authors = [{ name = "Jesus Murgas" }]
 requires-python = ">=3.10"
 license = { text = "MIT" }
-keywords = ["foundation", "geotechnical", "eurocode", "EC7", "EC2", "structural"]
+authors = [{ name = "Jesús Murgas" }]
+keywords = ["foundation-design", "eurocode-7", "aci-318", "footings", "piles", "retaining-walls", "punching-shear", "geotechnical", "structural-engineering"]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["pydantic>=2.0", "jmstructural-common", "reportlab>=4.0"]
+dependencies = ["pydantic>=2.0", "reportlab>=4.0"]
 
 [project.optional-dependencies]
-plot = ["matplotlib>=3.7", "plotly>=5.0"]
 numeric = ["numpy>=1.24", "scipy>=1.10", "pandas>=2.0"]
-dev = ["pytest>=7.0", "pytest-cov"]
-test = ["pytest>=7.0", "pytest-cov>=4.0", "coverage>=7.0", "hypothesis>=6.0"]
+plot = ["matplotlib>=3.7", "plotly>=5.0"]
+test = ["pytest>=7.0", "pytest-cov>=4.0", "coverage>=7.0", "hypothesis>=6.0", "pytest-timeout>=2.1"]
 desktop = ["matplotlib>=3.7", "numpy>=1.24"]
 dashboard = ["streamlit>=1.30", "matplotlib>=3.7", "numpy>=1.24"]
 api = ["fastapi>=0.100", "uvicorn[standard]>=0.20", "httpx>=0.25"]
 examples = ["PyniteFEA>=0.0.90"]
-memos = [
-    "handcalcs>=1.6",
-    "forallpeople>=2.6",
-]
+memos = ["handcalcs>=1.6", "forallpeople>=2.6"]
 
 [project.scripts]
-foundationdesignjm-desktop = "foundationdesignjm.desktop.app:main"
-foundationdesignjm-dashboard = "foundationdesignjm.dashboard.__main__:main"
+foundationcalc-desktop = "foundationcalc.desktop.app:main"
+foundationcalc-dashboard = "foundationcalc.dashboard.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/jmurgass99/foundationcalc"
+Repository = "https://github.com/jmurgass99/foundationcalc"
+Issues = "https://github.com/jmurgass99/foundationcalc/issues"
 
 [tool.setuptools.packages.find]
-include = ["foundationdesignjm*"]
-exclude = ["tests*", "examples*", "docs*"]
+include = ["foundationcalc*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
 markers = [
-    "unit: tests unitarios rapidos (<100ms)",
-    "integration: requieren stack completo o multiples modulos",
-    "slow: tests con duracion alta (>5s)",
-    "fastsap: requieren puente FastSAP (omitir en CI sin SAP)",
-    "safety_critical: validados contra valores publicados (tol <= 2%)",
-    "examples: ejecutan examples/*.py como subprocess",
+    "slow: tests lentos",
+    "integration: integración entre módulos",
+    "api: endpoints REST",
     "property: property-based con hypothesis",
+    "safety_critical: validados contra valores publicados",
 ]
-addopts = "--strict-markers"
-
-[tool.coverage.run]
-source = ["foundationdesignjm"]
-omit = [
-    "foundationdesignjm/_brand.py",
-    "foundationdesignjm/desktop/*",
-    "foundationdesignjm/dashboard/*",
-    "foundationdesignjm/reports/pdf_report.py",
-    "tests/*",
-    "examples/*",
-]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@abstractmethod",
-]
-fail_under = 70
-show_missing = true
-
-[tool.uv.sources]
-jmstructural-common = { workspace = true }

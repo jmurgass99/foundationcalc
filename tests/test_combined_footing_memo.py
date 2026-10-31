@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-from foundationdesignjm.memos.combined_footing import (
+from foundationcalc.memos.combined_footing import (
     CombinedFootingFullInput,
     CombinedFootingFullResult,
     render_combined_footing_memo,

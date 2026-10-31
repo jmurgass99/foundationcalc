@@ -3,19 +3,19 @@ from __future__ import annotations
 import math
 import pytest
 
-from foundationdesignjm.services.footings import (
+from foundationcalc.services.footings import (
     IsolatedFootingInput, design_isolated_footing, FootingDesignResult,
 )
-from foundationdesignjm.services.walls import (
+from foundationcalc.services.walls import (
     CantileverWallInput, design_cantilever_wall,
 )
-from foundationdesignjm.services.piles import (
+from foundationcalc.services.piles import (
     PileAxialInput, design_pile_axial,
 )
-from foundationdesignjm.services.bearing import (
+from foundationcalc.services.bearing import (
     SoilLayerSpec, BearingInput, bearing_capacity_multilayer,
 )
-from foundationdesignjm.services.seismic import (
+from foundationcalc.services.seismic import (
     MononobeOkabeInput, mononobe_okabe_thrust,
 )
 
@@ -184,7 +184,7 @@ def test_mononobe_okabe_basic():
 
 def test_mononobe_okabe_invalid_geometry_raises():
     # Mejora B: ahora se lanza CodeError tipado (subclase de FoundationError)
-    from foundationdesignjm.exceptions import CodeError, FoundationError
+    from foundationcalc.exceptions import CodeError, FoundationError
     with pytest.raises(CodeError):
         mononobe_okabe_thrust(MononobeOkabeInput(
             H=5.0, gamma=18.0, phi=15.0, kh=0.4,

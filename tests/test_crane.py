@@ -4,16 +4,16 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.crane import (
+from foundationcalc.analysis.crane import (
     CraneLoadCase,
     CraneLoadState,
     crane_foundation_check,
     design_envelope,
 )
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
 
 
 SAND = SoilLayer(

@@ -53,7 +53,7 @@ from __future__ import annotations
 import math
 import pytest
 
-from foundationdesignjm.design.punching_shear import (
+from foundationcalc.design.punching_shear import (
     AciPunchingShearResult,
     punching_shear_aci318_check,
 )

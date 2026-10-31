@@ -2,26 +2,26 @@
 
 import math
 
-from foundationdesignjm.analysis.bearing_capacity import undrained_bearing_capacity
-from foundationdesignjm.analysis.earth_pressure import (
+from foundationcalc.analysis.bearing_capacity import undrained_bearing_capacity
+from foundationcalc.analysis.earth_pressure import (
     active_thrust,
     heel_min_width_for_rankine,
 )
-from foundationdesignjm.analysis.seismic import (
+from foundationcalc.analysis.seismic import (
     mononobe_okabe_K,
     seismic_thrust,
 )
-from foundationdesignjm.analysis.stability import (
+from foundationcalc.analysis.stability import (
     overturning_check,
     sliding_resistance_undrained,
 )
-from foundationdesignjm.codes.eurocode7 import (
+from foundationcalc.codes.eurocode7 import (
     DesignApproach,
     LimitState,
     get_partial_factors,
 )
-from foundationdesignjm.core.geometry import RectangularFoundation
-from foundationdesignjm.core.soil import SoilLayer, SoilType
+from foundationcalc.core.geometry import RectangularFoundation
+from foundationcalc.core.soil import SoilLayer, SoilType
 
 
 # --- Geometry & soils -----------------------------------------------------
@@ -65,7 +65,7 @@ M_fill = W_fill * (b_heel / 2.0 + t_s + x)
 M_stb_char = M_base + M_stem + M_fill
 
 print("=" * 70)
-print("FoundationDesignJm - Cantilever wall on clay (undrained GEO)")
+print("FoundationCalc - Cantilever wall on clay (undrained GEO)")
 print("=" * 70)
 print(f"H_design = {H_design:.2f} m, B = {B:.2f} m")
 print(f"  b_heel = {b_heel:.2f} m, fill phi = {fill.friction_angle:.0f} deg")

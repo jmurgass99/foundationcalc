@@ -1,6 +1,6 @@
 """GOLDEN — factor de influencia de Newmark/Fadum bajo esquina de rectangulo.
 
-Modulo bajo prueba: ``foundationdesignjm.analysis.boussinesq``.
+Modulo bajo prueba: ``foundationcalc.analysis.boussinesq``.
 
 FUENTE (solucion cerrada publicada, reproducida y derivada aqui):
     Newmark, N. M. (1935), "Simplified computation of vertical pressures in
@@ -48,12 +48,12 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.boussinesq import (
+from foundationcalc.analysis.boussinesq import (
     BoussinesqRect,
     influence_corner,
     sigma_z_rect_center,
 )
-from foundationdesignjm.analysis.stress import newmark_influence_factor
+from foundationcalc.analysis.stress import newmark_influence_factor
 
 
 # (m, n, I publicado en la tabla de Fadum/Newmark a 4 decimales,

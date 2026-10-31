@@ -259,7 +259,7 @@ Permanent γ_G = 1.0 (both favourable and unfavourable in this Spanish set — n
 
 ---
 
-## Notes for `foundationdesignjm`
+## Notes for `foundationcalc`
 
 The API must expose:
 1. **Design Approach** selector (DA1-C1, DA1-C2, DA2, DA2*, DA3).

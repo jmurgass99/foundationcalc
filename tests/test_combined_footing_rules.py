@@ -18,10 +18,10 @@ Tres defectos, tres reglas:
 """
 from __future__ import annotations
 
-from jmstructural_common.model import Reaction
+from foundationcalc._common.model import Reaction
 
-from foundationdesignjm.design.combined_footing import CombinedFootingResult
-from foundationdesignjm.integration.foundation_chain import (
+from foundationcalc.design.combined_footing import CombinedFootingResult
+from foundationcalc.integration.foundation_chain import (
     _combined_footing_is_plausible,
     foundation_package,
 )

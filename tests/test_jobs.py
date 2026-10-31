@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import pytest
 
-from foundationdesignjm.jobs import (
+from foundationcalc.jobs import (
     JobStore, JobQueue, JobRecord, JobKind, JobStatus,
     register_task, list_tasks,
 )

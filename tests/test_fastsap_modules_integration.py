@@ -18,14 +18,14 @@ import tempfile
 
 class TestAISC360:
     def test_shape_from_catalog(self):
-        from foundationdesignjm.codes.aisc_360 import SteelShape
+        from foundationcalc.codes.aisc_360 import SteelShape
         s = SteelShape.from_aisc("W14X90")
         for attr in ("A", "d", "bf", "tf", "tw", "Ix", "Iy",
                       "Zx", "Sx", "rx", "ry", "J", "Cw"):
             assert getattr(s, attr) > 0
 
     def test_beam_flexure(self):
-        from foundationdesignjm.codes.aisc_360 import (
+        from foundationcalc.codes.aisc_360 import (
             SteelShape, design_beam_flexure,
         )
         s = SteelShape.from_aisc("W14X90")
@@ -34,7 +34,7 @@ class TestAISC360:
         assert r.regime in {"plastic", "inelastic_LTB", "elastic_LTB"}
 
     def test_column(self):
-        from foundationdesignjm.codes.aisc_360 import (
+        from foundationcalc.codes.aisc_360 import (
             SteelShape, design_column,
         )
         s = SteelShape.from_aisc("W14X90")
@@ -43,7 +43,7 @@ class TestAISC360:
         assert r.utilization > 0
 
     def test_interaction_H1(self):
-        from foundationdesignjm.codes.aisc_360 import interaction_H1
+        from foundationcalc.codes.aisc_360 import interaction_H1
         r = interaction_H1(Pu=1800e3, phi_Pn=2400e3,
                             Mux=400e6, phi_Mnx=600e6)
         assert r.formula in {"H1-1a", "H1-1b"}
@@ -56,7 +56,7 @@ class TestAISC360:
 
 class TestAISCConnections:
     def test_base_plate(self):
-        from foundationdesignjm.codes.aisc_360_connections import (
+        from foundationcalc.codes.aisc_360_connections import (
             design_base_plate,
         )
         r = design_base_plate(Pu=500e3, fc=28, B=400, N=400,
@@ -65,14 +65,14 @@ class TestAISCConnections:
         assert r.A1 == 400 * 400
 
     def test_fillet_weld(self):
-        from foundationdesignjm.codes.aisc_360_connections import (
+        from foundationcalc.codes.aisc_360_connections import (
             fillet_weld_strength,
         )
         r = fillet_weld_strength(w=6, FEXX=485, theta_deg=0, Ru=500)
         assert r.phi_Rn_per_mm > 0
 
     def test_bolt_shear(self):
-        from foundationdesignjm.codes.aisc_360_connections import (
+        from foundationcalc.codes.aisc_360_connections import (
             bolt_shear_capacity,
         )
         r = bolt_shear_capacity(Ab=285, Fnv=372, n_bolts=4, Vu=200e3)
@@ -85,7 +85,7 @@ class TestAISCConnections:
 
 class TestMemoriaMaestra:
     def test_minimal_pdf(self):
-        from foundationdesignjm.memoria_builder import MemoriaBuilder
+        from foundationcalc.memoria_builder import MemoriaBuilder
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             p = f.name
         try:
@@ -108,7 +108,7 @@ class TestMemoriaMaestra:
 
 class TestFemaP58:
     def test_lognormal_fragility(self):
-        from foundationdesignjm.codes.fema_p58.fragility import (
+        from foundationcalc.codes.fema_p58.fragility import (
             LognormalFragility,
         )
         f = LognormalFragility(theta=0.01, beta=0.4)
@@ -116,7 +116,7 @@ class TestFemaP58:
         assert 0.5 < f.p_exceed(edp=0.020) < 1.0
 
     def test_monotonic(self):
-        from foundationdesignjm.codes.fema_p58.fragility import (
+        from foundationcalc.codes.fema_p58.fragility import (
             LognormalFragility,
         )
         f = LognormalFragility(theta=0.01, beta=0.4)

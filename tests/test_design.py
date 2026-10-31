@@ -3,21 +3,21 @@
 import math
 import pytest
 
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.material import Concrete, ReinforcingSteel
-from foundationdesignjm.design.pile_cap import (
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.material import Concrete, ReinforcingSteel
+from foundationcalc.design.pile_cap import (
     cap_four_piles,
     cap_three_piles,
     cap_two_piles,
     distribute_forces_rigid_cap,
 )
-from foundationdesignjm.design.punching_shear import punching_shear_check
-from foundationdesignjm.design.reinforcement import (
+from foundationcalc.design.punching_shear import punching_shear_check
+from foundationcalc.design.reinforcement import (
     critical_section_offset,
     flexural_reinforcement,
     reinforcement_distribution_rectangular_footing,
 )
-from foundationdesignjm.design.strap_beam import (
+from foundationcalc.design.strap_beam import (
     GroundType,
     seismic_tie_force,
     strap_for_two_footings,

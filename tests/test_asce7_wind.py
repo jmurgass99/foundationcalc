@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.codes.asce7_wind import (
+from foundationcalc.codes.asce7_wind import (
     Exposure,
     Kz,
     design_wind_pressure,

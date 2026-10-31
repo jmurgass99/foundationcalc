@@ -1,7 +1,7 @@
 """Tests pile capacity multi-código."""
 import pytest
 
-from foundationdesignjm.pile_capacity_multi import (
+from foundationcalc.pile_capacity_multi import (
     PileCapacityInput, design_pile_capacity,
 )
 

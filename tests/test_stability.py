@@ -3,12 +3,12 @@
 import math
 import pytest
 
-from foundationdesignjm.analysis.stability import (
+from foundationcalc.analysis.stability import (
     overturning_check,
     sliding_resistance_drained,
     sliding_resistance_undrained,
 )
-from foundationdesignjm.core.soil import SoilLayer, SoilType
+from foundationcalc.core.soil import SoilLayer, SoilType
 
 
 SAND = SoilLayer(

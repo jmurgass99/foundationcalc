@@ -9,8 +9,8 @@ El criterio de cambio se declara EXPLÍCITAMENTE en la salida de cada nudo y en 
 from __future__ import annotations
 
 import pytest
-from jmstructural_common.model import Reaction
-from foundationdesignjm.integration.foundation_chain import (
+from foundationcalc._common.model import Reaction
+from foundationcalc.integration.foundation_chain import (
     foundation_chain_from_etabs,
     foundation_package,
 )

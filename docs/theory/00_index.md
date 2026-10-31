@@ -1,4 +1,4 @@
-# Theory Index — FoundationDesignJm
+# Theory Index — FoundationCalc
 
 Knowledge base extracted from the *Foundation Structures* course (UPC — Master in Structural and Construction Engineering) and from EN 1990, EN 1992, EN 1997 (Eurocodes), CTE-DB-SE-C (Spain), and EHE.
 

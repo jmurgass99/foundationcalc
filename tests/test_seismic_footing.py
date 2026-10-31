@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.analysis.seismic_footing import (
+from foundationcalc.analysis.seismic_footing import (
     SeismicAction,
     seismic_footing_check,
 )
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
 
 
 @pytest.fixture

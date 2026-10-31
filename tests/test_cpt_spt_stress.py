@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.consolidation import (
+from foundationcalc.analysis.consolidation import (
     ClayLayer,
     Tv_from_U,
     U_from_Tv,
@@ -15,7 +15,7 @@ from foundationdesignjm.analysis.consolidation import (
     settlement_consolidation,
     time_to_consolidation,
 )
-from foundationdesignjm.analysis.cpt import (
+from foundationcalc.analysis.cpt import (
     CPTProfile,
     CPTReading,
     SBTZone,
@@ -26,7 +26,7 @@ from foundationdesignjm.analysis.cpt import (
     relative_density_kulhawy_mayne,
     sbt_zone_from_i_c,
 )
-from foundationdesignjm.analysis.spt import (
+from foundationcalc.analysis.spt import (
     SoilTypeSPT,
     SPTReading,
     cu_stroud,
@@ -38,7 +38,7 @@ from foundationdesignjm.analysis.spt import (
     phi_peck_hanson_thornburn,
     relative_density_skempton,
 )
-from foundationdesignjm.analysis.stress import (
+from foundationcalc.analysis.stress import (
     boussinesq_circular_load_centre,
     boussinesq_point_load_dsigma_z,
     boussinesq_rect_centre,

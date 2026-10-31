@@ -20,7 +20,7 @@ Worked example (both fichas, identical inputs):
   He (resultant height) = (PA*H/3 + (Ed-PA)*H/2) / Ed = 2.38 m
 
 The package already implements the full-generality Mononobe-Okabe formula
-(`foundationdesignjm.analysis.seismic.mononobe_okabe_K` / `seismic_thrust`,
+(`foundationcalc.analysis.seismic.mononobe_okabe_K` / `seismic_thrust`,
 including the `gamma_phi` partial-factor reduction) predating this campaign,
 so no new function was written here — this file only anchors goldens to the
 existing code, exercising the `gamma_phi` parameter for the first time
@@ -109,7 +109,7 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.seismic import mononobe_okabe_K, seismic_thrust
+from foundationcalc.analysis.seismic import mononobe_okabe_K, seismic_thrust
 
 PHI_CHAR = 36.0
 DELTA_CHAR = 20.0

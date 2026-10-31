@@ -14,12 +14,12 @@ legitimo.
 """
 from __future__ import annotations
 
-from foundationdesignjm.analysis.pile_group import (
+from foundationcalc.analysis.pile_group import (
     PileGroup,
     PileInGroup,
     distribute_loads_rigid_cap,
 )
-from jmstructural_common.audit_status import CalculationStatus
+from foundationcalc._common.audit_status import CalculationStatus
 
 FAVORABLES = (CalculationStatus.CALCULADO_CUMPLE,)
 
@@ -78,7 +78,7 @@ def test_el_default_del_dataclass_ya_no_es_un_veredicto_favorable() -> None:
     "omision = cumplimiento" que la Proof Obligation prohibe, escrita como default
     de dataclass.
     """
-    from foundationdesignjm.analysis.pile_group import PileForce
+    from foundationcalc.analysis.pile_group import PileForce
 
     f = PileForce(
         pile_name="P1", x_m=0.0, y_m=0.0, N_kN=100.0, H_x_kN=0.0, H_y_kN=0.0,

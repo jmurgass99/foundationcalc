@@ -1,26 +1,28 @@
-"""packages/FoundationDesignJm/tests/test_foundation_package.py
+"""packages/FoundationCalc/tests/test_foundation_package.py
 =============================================================
 Pruebas de Carril B: Entregables de Cimentación (Armado, DXF, Memoria, Cantidades y Zapatas Combinadas).
 """
 from __future__ import annotations
+import pytest as _pytest_skip
+_pytest_skip.importorskip("rebardxf")  # dependencia externa opcional: sin ella estos tests se omiten
 
 import math
 from pathlib import Path
 import tempfile
 import pytest
 
-from foundationdesignjm.core.material import Concrete, ReinforcingSteel
-from foundationdesignjm.design.reinforcement import (
+from foundationcalc.core.material import Concrete, ReinforcingSteel
+from foundationcalc.design.reinforcement import (
     anchorage_length_ec2,
     design_footing_flexure_both_ways,
     select_footing_rebar,
 )
-from foundationdesignjm.integration.dxf_armado import ArmadoZapataDXF, export_armado_zapata
-from foundationdesignjm.integration.foundation_chain import (
+from foundationcalc.integration.dxf_armado import ArmadoZapataDXF, export_armado_zapata
+from foundationcalc.integration.foundation_chain import (
     FoundationPackageResult,
     foundation_package,
 )
-from jmstructural_common.model import Reaction
+from foundationcalc._common.model import Reaction
 
 
 def test_anchorage_length_ec2():

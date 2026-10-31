@@ -199,7 +199,7 @@ The eccentric footing is enlarged and detailed so that the moment from the wall 
 
 ---
 
-## Notes for `foundationdesignjm`
+## Notes for `foundationcalc`
 
 | Concept | Module |
 |---|---|

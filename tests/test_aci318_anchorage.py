@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.codes.aci318_anchorage import (
+from foundationcalc.codes.aci318_anchorage import (
     AnchorCondition,
     interaction,
     shear_capacity,

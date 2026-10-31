@@ -1,16 +1,16 @@
-"""Tests para foundationdesignjm.excavations (EN 1997-1 §12)."""
+"""Tests para foundationcalc.excavations (EN 1997-1 §12)."""
 from __future__ import annotations
 
 import math
 import pytest
 
-from foundationdesignjm.excavations import (
+from foundationcalc.excavations import (
     apparent_earth_pressure,
     basal_heave_clay,
     strut_force,
     terzaghi_peck_heave,
 )
-from foundationdesignjm.exceptions import GeotechError
+from foundationcalc.exceptions import GeotechError
 
 
 # ---------------------------------------------------------------------------

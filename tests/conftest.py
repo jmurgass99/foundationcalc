@@ -1,4 +1,4 @@
-"""Configuracion compartida de pytest para FoundationDesignJm.
+"""Configuracion compartida de pytest para FoundationCalc.
 
 Garantiza que el package es importable y anade fixtures comunes.
 """

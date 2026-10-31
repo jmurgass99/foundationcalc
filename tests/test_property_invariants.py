@@ -40,7 +40,7 @@ valid_kh = st.floats(min_value=0.0, max_value=0.3)               # seismic coef
 def test_bearing_capacity_is_positive(phi, c, gamma, depth, width):
     """qu siempre > 0 para suelo valido."""
     try:
-        from foundationdesignjm.services.bearing import (
+        from foundationcalc.services.bearing import (
             SoilLayerSpec, BearingInput, bearing_capacity_multilayer,
         )
     except ImportError:
@@ -62,7 +62,7 @@ def test_seismic_reduces_bearing(phi, gamma, depth, width, kh1, kh2):
     """qu sismico siempre <= qu estatico para mismo suelo."""
     assume(kh1 < kh2)
     try:
-        from foundationdesignjm.services.bearing import (
+        from foundationcalc.services.bearing import (
             SoilLayerSpec, BearingInput, bearing_capacity_multilayer,
         )
     except ImportError:
@@ -85,7 +85,7 @@ def test_seismic_reduces_bearing(phi, gamma, depth, width, kh1, kh2):
 def test_mononobe_okabe_KAE_greater_than_static(phi, H, gamma, kh):
     """K_AE sismico siempre >= Ka estatico (Rankine)."""
     try:
-        from foundationdesignjm.services.seismic import (
+        from foundationcalc.services.seismic import (
             MononobeOkabeInput, mononobe_okabe_thrust,
         )
     except ImportError:
@@ -108,7 +108,7 @@ def test_mononobe_okabe_KAE_greater_than_static(phi, H, gamma, kh):
 def test_isolated_footing_pressure_average_consistent(N, L):
     """q_avg debe igualar N / Ag."""
     try:
-        from foundationdesignjm.services.footings import (
+        from foundationcalc.services.footings import (
             IsolatedFootingInput, design_isolated_footing,
         )
     except ImportError:

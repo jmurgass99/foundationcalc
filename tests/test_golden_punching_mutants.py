@@ -2,7 +2,7 @@
 
 Motivación
 ==========
-`foundationdesignjm/design/punching_shear.py` sufrió un incidente en el que un
+`foundationcalc/design/punching_shear.py` sufrió un incidente en el que un
 mutante del perímetro de control (`2.0 * c2` -> `3.0 * c2`) llegó a estar
 commiteado sin que ningún test lo detectase (ver commit
 "revert: restaurar punching_shear.py, que entro MUTADO"). El piloto de mutation
@@ -98,8 +98,8 @@ import math
 
 import pytest
 
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.design.punching_shear import punching_shear_check
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.design.punching_shear import punching_shear_check
 
 # (100 · ρ_l · f_ck)^(1/3) con ρ_l = 0.005 y f_ck = 25 MPa -> 12.5^(1/3)
 CUBE_ROOT_12_5 = 12.5 ** (1.0 / 3.0)  # = 2.320794417

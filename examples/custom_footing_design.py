@@ -7,20 +7,20 @@ Materials: C30/37 + B500S
 """
 import math
 
-from foundationdesignjm.analysis.bearing_capacity import (
+from foundationcalc.analysis.bearing_capacity import (
     BearingCapacityFormula, drained_bearing_capacity,
 )
-from foundationdesignjm.analysis.stability import (
+from foundationcalc.analysis.stability import (
     overturning_check, sliding_resistance_drained,
 )
-from foundationdesignjm.codes.eurocode7 import (
+from foundationcalc.codes.eurocode7 import (
     DesignApproach, LimitState, get_partial_factors,
 )
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.material import Concrete, ReinforcingSteel
-from foundationdesignjm.core.soil import SoilLayer, SoilType
-from foundationdesignjm.design.punching_shear import punching_shear_check
-from foundationdesignjm.design.reinforcement import (
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.material import Concrete, ReinforcingSteel
+from foundationcalc.core.soil import SoilLayer, SoilType
+from foundationcalc.design.punching_shear import punching_shear_check
+from foundationcalc.design.reinforcement import (
     critical_section_offset, flexural_reinforcement,
 )
 

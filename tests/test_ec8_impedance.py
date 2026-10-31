@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from foundationdesignjm.codes.eurocode8 import (
+from foundationcalc.codes.eurocode8 import (
     DesignSpectrum,
     GroundType,
     ImportanceClass,
@@ -19,7 +19,7 @@ from foundationdesignjm.codes.eurocode8 import (
     list_zones,
     lookup_seismic_zone,
 )
-from foundationdesignjm.dynamics import (
+from foundationcalc.dynamics import (
     rectangular_footing_impedance,
     soil_dynamic_modulus,
 )

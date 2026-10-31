@@ -3,7 +3,7 @@
 import math
 import pytest
 
-from foundationdesignjm.analysis.seismic import (
+from foundationcalc.analysis.seismic import (
     cyclic_stress_ratio,
     liquefaction_screening,
     mononobe_okabe_K,

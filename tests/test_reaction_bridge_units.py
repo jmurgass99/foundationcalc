@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""test_reaction_bridge_units.py — Pruebas de unidades físicas para el puente FoundationDesignJm.
+"""test_reaction_bridge_units.py — Pruebas de unidades físicas para el puente FoundationCalc.
 
 Verifica rigurosamente la consistencia dimensional en el predimensionamiento geotécnico:
     N_max [kN], qa [kPa = kN/m^2]
@@ -21,12 +21,12 @@ from __future__ import annotations
 import math
 import pytest
 
-from foundationdesignjm.reaction_bridge import (
+from foundationcalc.reaction_bridge import (
     design_footings_from_model,
     reaction_to_point_load,
     size_isolated_footing_from_reactions,
 )
-from jmstructural_common.model import Model, Node, Reaction, Restraint
+from foundationcalc._common.model import Model, Node, Reaction, Restraint
 
 
 class TestReactionBridgePhysicalUnits:

@@ -2,7 +2,7 @@
 
 DEFECTO CORREGIDO
 -----------------
-`foundationdesignjm/consolidacion_1d.py::_Tv_from_U` calculaba la rama alta como
+`foundationcalc/consolidacion_1d.py::_Tv_from_U` calculaba la rama alta como
 
     -(4/pi^2) * log10(1 - U) * 2.303        # ~ -(4/pi^2)*ln(1-U)
 
@@ -32,8 +32,8 @@ import math
 
 import pytest
 
-from foundationdesignjm.analysis.consolidacion_1d import Tv_from_U, U_from_Tv
-from foundationdesignjm.consolidacion_1d import (
+from foundationcalc.analysis.consolidacion_1d import Tv_from_U, U_from_Tv
+from foundationcalc.consolidacion_1d import (
     ConsolidationInput,
     _Tv_from_U,
     evaluate_consolidation,

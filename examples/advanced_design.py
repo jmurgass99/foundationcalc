@@ -1,5 +1,5 @@
 """Advanced foundation design example — uses current API (v0.2+)."""
-from foundationdesignjm import (
+from foundationcalc import (
     BasePressureAnalysis,
     Column,
     CombinationEntry,
@@ -35,7 +35,7 @@ uls_combo = LoadCombination(
     ],
 )
 
-print("--- FoundationDesignJm: Advanced Design Report ---")
+print("--- FoundationCalc: Advanced Design Report ---")
 
 # A. Base pressures
 pressures = BasePressureAnalysis(fdn, col).calculate_pressures(uls_combo)

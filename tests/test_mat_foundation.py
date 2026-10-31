@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from foundationdesignjm.analysis.mat_foundation import MatFoundationSolver
+from foundationcalc.analysis.mat_foundation import MatFoundationSolver
 
 
 def _integrated_reaction(mat: MatFoundationSolver, res) -> float:

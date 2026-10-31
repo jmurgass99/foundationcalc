@@ -1,4 +1,4 @@
-"""B48: cinco sitios de FoundationDesignJm que inventan o descartan un dato (§8).
+"""B48: cinco sitios de FoundationCalc que inventan o descartan un dato (§8).
 
 §8.2  integration/foundation_chain._resolve_reactions (rama de dicts)
     fz_kN=float(r.get("Fz", r.get("FZ", 0.0)))   ... y las otras cinco igual
@@ -10,7 +10,7 @@
     Los momentos/cortantes ausentes SIGUEN a 0.0 --rechazarlos es la pregunta
     PARADA en §7-quinquies-quater-- pero ya no en silencio.
 
-§8.7  codes/aisc_360_connections.design_base_plate (copia de FoundationDesignJm;
+§8.7  codes/aisc_360_connections.design_base_plate (copia de FoundationCalc;
     la de fastsap se arreglo en B44 y las dos siguen identicas).
 
 §8.18 reaction_bridge: la envolvente de DESLIZAMIENTO solo recorria las
@@ -42,7 +42,7 @@ import pytest
 # =========================================================================== #
 
 def _resolver(filas):
-    from foundationdesignjm.integration.foundation_chain import _resolve_reactions
+    from foundationcalc.integration.foundation_chain import _resolve_reactions
     return _resolve_reactions(filas)
 
 
@@ -74,7 +74,7 @@ def test_un_DataFrame_no_desaparece_en_silencio() -> None:
 
 
 def test_los_momentos_ausentes_se_DECLARAN_asumidos() -> None:
-    from foundationdesignjm.integration.foundation_chain import foundation_chain_from_etabs
+    from foundationcalc.integration.foundation_chain import foundation_chain_from_etabs
     res = foundation_chain_from_etabs([{"joint": "C1", "case": "U", "Fz": 800.0}],
                                       {"allowable_bearing_kPa": 200.0})
     asumidas = set(res.design_summary["C1"].get("assumed_zero", ()))
@@ -82,7 +82,7 @@ def test_los_momentos_ausentes_se_DECLARAN_asumidos() -> None:
 
 
 def test_GUARDA_una_fila_completa_no_declara_nada() -> None:
-    from foundationdesignjm.integration.foundation_chain import foundation_chain_from_etabs
+    from foundationcalc.integration.foundation_chain import foundation_chain_from_etabs
     res = foundation_chain_from_etabs(
         [{"joint": "C1", "case": "U", "Fx": 30.0, "Fy": 30.0, "Fz": 800.0,
           "Mx": 150.0, "My": 150.0, "Mz": 0.0}],
@@ -91,18 +91,18 @@ def test_GUARDA_una_fila_completa_no_declara_nada() -> None:
 
 
 # =========================================================================== #
-# §8.7 placa base DG-1 (copia de FoundationDesignJm)
+# §8.7 placa base DG-1 (copia de FoundationCalc)
 # =========================================================================== #
 
 def test_DG1_FDJM_un_levantamiento_no_es_aplastamiento() -> None:
-    from foundationdesignjm.codes.aisc_360_connections import design_base_plate
+    from foundationcalc.codes.aisc_360_connections import design_base_plate
     r = design_base_plate(Pu=-150e3, fc=25.0, B=400.0, N=400.0, d=300.0,
                           bf=300.0, Fy_plate=250.0)
     assert r.ok is not True and "levantamiento" in (r.motivo_no_evaluado or "")
 
 
 def test_DG1_FDJM_GUARDA_la_compresion_no_cambia() -> None:
-    from foundationdesignjm.codes.aisc_360_connections import design_base_plate
+    from foundationcalc.codes.aisc_360_connections import design_base_plate
     r = design_base_plate(Pu=150e3, fc=25.0, B=400.0, N=400.0, d=300.0,
                           bf=300.0, Fy_plate=250.0)
     assert r.ok is True and r.tp_req == pytest.approx(7.3030, abs=1e-3)
@@ -113,8 +113,8 @@ def test_DG1_FDJM_GUARDA_la_compresion_no_cambia() -> None:
 # =========================================================================== #
 
 def _zapata(*reacciones):
-    from jmstructural_common.model import Reaction
-    from foundationdesignjm.reaction_bridge import size_isolated_footing_from_reactions
+    from foundationcalc._common.model import Reaction
+    from foundationcalc.reaction_bridge import size_isolated_footing_from_reactions
     rx = [Reaction(node_id="N1", case=f"C{i}", **kw) for i, kw in enumerate(reacciones)]
     return size_isolated_footing_from_reactions(rx, allowable_bearing_kPa=200.0)["N1"]
 
@@ -143,7 +143,7 @@ def test_DESLIZAMIENTO_GUARDA_sin_cortante_nada_cambia() -> None:
 # =========================================================================== #
 
 def _armar(**kw):
-    from foundationdesignjm.design.reinforcement import design_footing_flexure_both_ways
+    from foundationcalc.design.reinforcement import design_footing_flexure_both_ways
     return design_footing_flexure_both_ways(B_m=3.0, L_m=3.0, h_m=0.5, **kw)
 
 
@@ -158,7 +158,7 @@ def test_ARMADO_los_momentos_que_recibe_ya_no_se_tiran() -> None:
 
 def test_ARMADO_GUARDA_sin_momentos_el_armado_no_cambia() -> None:
     """Con Mx = My = 0, q_max = q_avg exacto: el caso centrado no se mueve."""
-    from foundationdesignjm.design.reinforcement import design_footing_flexure_both_ways
+    from foundationcalc.design.reinforcement import design_footing_flexure_both_ways
     r = design_footing_flexure_both_ways(B_m=2.15, L_m=2.15, h_m=0.5, N_Ed_kN=1800.0)
     assert r["X"].M_Ed_kNm == pytest.approx(365.955, abs=0.05)
 
@@ -171,7 +171,7 @@ def test_ARMADO_un_levantamiento_no_se_publica_como_armado_comprobado() -> None:
 
 
 def test_ARMADO_la_cadena_le_pasa_la_excentricidad() -> None:
-    from foundationdesignjm.integration.foundation_chain import foundation_package
+    from foundationcalc.integration.foundation_chain import foundation_package
     base = [{"joint": "C1", "case": "U", "Fx": 0.0, "Fy": 0.0, "Fz": 1800.0,
              "Mx": 0.0, "My": 0.0, "Mz": 0.0}]
     exc = [{**base[0], "My": 900.0}]
@@ -195,14 +195,14 @@ def test_ARMADO_la_cadena_le_pasa_la_excentricidad() -> None:
 
 def test_CPT_un_cu_cero_MEDIDO_no_se_convierte_en_40() -> None:
     from types import SimpleNamespace
-    from foundationdesignjm.analysis import cpt_to_design as mod
+    from foundationcalc.analysis import cpt_to_design as mod
     estrato = SimpleNamespace(c_u_kPa=0.0)
     assert mod._cu_del_estrato(estrato) == 0.0
 
 
 def test_CPT_un_cu_AUSENTE_no_se_inventa() -> None:
     from types import SimpleNamespace
-    from foundationdesignjm.analysis import cpt_to_design as mod
+    from foundationcalc.analysis import cpt_to_design as mod
     with pytest.raises(ValueError, match="c_u"):
         mod._cu_del_estrato(SimpleNamespace(c_u_kPa=None, z_top_m=1.0, z_bot_m=2.0))
 
@@ -212,13 +212,13 @@ def test_CPT_un_cu_AUSENTE_no_se_inventa() -> None:
 # =========================================================================== #
 
 def test_la_cadena_no_inventa_la_capacidad_del_suelo() -> None:
-    from foundationdesignjm.integration.foundation_chain import foundation_chain_from_etabs
+    from foundationcalc.integration.foundation_chain import foundation_chain_from_etabs
     with pytest.raises(ValueError, match="allowable_bearing_kPa"):
         foundation_chain_from_etabs([{"joint": "C1", "case": "U", "Fz": 800.0}], {})
 
 
 def test_GUARDA_con_la_capacidad_declarada_la_cadena_funciona() -> None:
-    from foundationdesignjm.integration.foundation_chain import foundation_chain_from_etabs
+    from foundationcalc.integration.foundation_chain import foundation_chain_from_etabs
     res = foundation_chain_from_etabs([{"joint": "C1", "case": "U", "Fz": 800.0}],
                                       {"allowable_bearing_kPa": 200.0})
     assert res.design_summary["C1"]["qa_kPa"] == 200.0
@@ -226,12 +226,12 @@ def test_GUARDA_con_la_capacidad_declarada_la_cadena_funciona() -> None:
 
 def test_CPT_un_E_correlado_NULO_no_se_convierte_en_30_MPa() -> None:
     from types import SimpleNamespace
-    from foundationdesignjm.analysis import cpt_to_design as mod
+    from foundationcalc.analysis import cpt_to_design as mod
     with pytest.raises(ValueError, match="Robertson"):
         mod._E_del_estrato(SimpleNamespace(E_MPa=0.0, z_top=1.0, z_bot=3.0))
 
 
 def test_CPT_GUARDA_un_E_medido_positivo_pasa_tal_cual() -> None:
     from types import SimpleNamespace
-    from foundationdesignjm.analysis import cpt_to_design as mod
+    from foundationcalc.analysis import cpt_to_design as mod
     assert mod._E_del_estrato(SimpleNamespace(E_MPa=12.5, z_top=1.0, z_bot=3.0)) == 12.5

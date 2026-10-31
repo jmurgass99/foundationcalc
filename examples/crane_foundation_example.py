@@ -8,7 +8,7 @@ Typical input loads from manufacturer manual:
 Soil: dense gravelly sand, phi_k = 36 deg, gamma_k = 19 kN/m3, 1.5 m of backfill above pad.
 """
 
-from foundationdesignjm import (
+from foundationcalc import (
     Column,
     Concrete,
     CraneLoadCase,
@@ -76,7 +76,7 @@ def run_block(pad: RectangularFoundation, mast: Column, label: str) -> None:
 
 
 print("=" * 80)
-print("FoundationDesignJm - Tower crane foundation design")
+print("FoundationCalc - Tower crane foundation design")
 print("=" * 80)
 
 # Initial design — too small for the storm case

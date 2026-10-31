@@ -10,15 +10,15 @@ from __future__ import annotations
 import math
 import pytest
 
-from foundationdesignjm.design.punching_shear import (
+from foundationcalc.design.punching_shear import (
     punching_shear_aci318_check,
     AciPunchingShearResult,
 )
-from foundationdesignjm.design.strap_beam import (
+from foundationcalc.design.strap_beam import (
     design_tie_beam_nsr10,
     Nsr10TieBeamResult,
 )
-from foundationdesignjm.design.basement_wall import (
+from foundationcalc.design.basement_wall import (
     evaluate_wall_stability_coulomb_rankine,
     BasementWallStabilityResult,
 )

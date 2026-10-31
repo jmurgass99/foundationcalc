@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.design.strap_beam import (
+from foundationcalc.design.strap_beam import (
     NSR10_TIE_BEAM_FACTOR,
     design_tie_beam_nsr10,
 )

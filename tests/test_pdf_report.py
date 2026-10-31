@@ -11,10 +11,10 @@ import os
 
 import pytest
 
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
-from foundationdesignjm.utils.pdf_report import (
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
+from foundationcalc.utils.pdf_report import (
     PdfReportBuilder,
     ReportMeta,
     report_basement_wall,
@@ -46,7 +46,7 @@ def test_builder_creates_valid_pdf(tmp_path):
 
 
 def test_retaining_wall_report(tmp_path):
-    from foundationdesignjm.design.retaining_wall import (
+    from foundationcalc.design.retaining_wall import (
         CantileverWallDesigner,
         CantileverWallGeometry,
         RetainingWallLoading,
@@ -72,7 +72,7 @@ def test_retaining_wall_report(tmp_path):
 
 
 def test_basement_wall_report(tmp_path):
-    from foundationdesignjm.design.basement_wall import (
+    from foundationcalc.design.basement_wall import (
         BasementWallDesigner,
         BasementWallGeometry,
         BasementWallLoading,
@@ -91,7 +91,7 @@ def test_basement_wall_report(tmp_path):
 
 
 def test_mat_foundation_report(tmp_path):
-    from foundationdesignjm.analysis.mat_foundation import MatFoundationSolver
+    from foundationcalc.analysis.mat_foundation import MatFoundationSolver
     mat = MatFoundationSolver(
         length=6, width=6, thickness=0.5, nx=10, ny=10, k_s=20000,
     )
@@ -105,10 +105,10 @@ def test_mat_foundation_report(tmp_path):
 
 
 def test_seismic_footing_report(tmp_path):
-    from foundationdesignjm.analysis.seismic_footing import (
+    from foundationcalc.analysis.seismic_footing import (
         SeismicAction, seismic_footing_check,
     )
-    from foundationdesignjm.core.geometry import Column, RectangularFoundation
+    from foundationcalc.core.geometry import Column, RectangularFoundation
     pad = RectangularFoundation(length=3000, width=3000, thickness=700, embedment_depth=1200)
     col = Column(length=400, width=400, pos_x=1500, pos_y=1500)
     soil = SoilLayer(name="sand", thickness=10, soil_type=SoilType.COHESIONLESS,
@@ -127,10 +127,10 @@ def test_seismic_footing_report(tmp_path):
 
 
 def test_crane_report(tmp_path):
-    from foundationdesignjm.analysis.crane import (
+    from foundationcalc.analysis.crane import (
         CraneLoadCase, CraneLoadState, design_envelope,
     )
-    from foundationdesignjm.core.geometry import Column, RectangularFoundation
+    from foundationcalc.core.geometry import Column, RectangularFoundation
     pad = RectangularFoundation(length=6500, width=6500, thickness=1600, embedment_depth=1500)
     col = Column(length=2000, width=2000, pos_x=3250, pos_y=3250)
     sand = SoilLayer(name="sand", thickness=12, soil_type=SoilType.COHESIONLESS,

@@ -31,8 +31,8 @@ from __future__ import annotations
 import math
 import pytest
 
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.design.punching_shear import punching_shear_check
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.design.punching_shear import punching_shear_check
 
 
 def test_golden_punching_shear_compact_ec2():

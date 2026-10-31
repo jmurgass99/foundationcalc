@@ -15,10 +15,10 @@ Run with:   python -m examples.ec8_and_impedance_example
 
 from __future__ import annotations
 
-from foundationdesignjm.codes.eurocode8 import (
+from foundationcalc.codes.eurocode8 import (
     GroundType, ImportanceClass, build_design_spectrum,
 )
-from foundationdesignjm.dynamics import (
+from foundationcalc.dynamics import (
     rectangular_footing_impedance, soil_dynamic_modulus,
 )
 
@@ -26,7 +26,7 @@ from foundationdesignjm.dynamics import (
 def main() -> None:
     # ---------------- 1. EC8 spectrum -----------------------------
     print("=" * 78)
-    print("FoundationDesignJm - EC8-1 spectrum")
+    print("FoundationCalc - EC8-1 spectrum")
     print("=" * 78)
     ds = build_design_spectrum(
         country="ES", region="Granada",
@@ -47,7 +47,7 @@ def main() -> None:
     # ---------------- 2. Foundation impedance ---------------------
     print()
     print("=" * 78)
-    print("FoundationDesignJm - SSI / foundation impedance")
+    print("FoundationCalc - SSI / foundation impedance")
     print("=" * 78)
     p = soil_dynamic_modulus(E_static_MPa=30.0, nu=0.30, G_over_Gmax=0.4)
     print(f"E_static = 30 MPa, G/G_max = 0.4:")
@@ -71,7 +71,7 @@ def main() -> None:
 
     print()
     print("Tip: launch the interactive dashboard with")
-    print("  python -m foundationdesignjm.dashboard")
+    print("  python -m foundationcalc.dashboard")
 
 
 if __name__ == "__main__":

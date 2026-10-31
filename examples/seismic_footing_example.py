@@ -18,14 +18,14 @@ The script prints the EN 1998-5 §5.4 verification across:
 
 from __future__ import annotations
 
-from foundationdesignjm.analysis.seismic_footing import (
+from foundationcalc.analysis.seismic_footing import (
     SeismicAction,
     seismic_footing_check,
 )
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from foundationdesignjm.core.geometry import Column, RectangularFoundation
-from foundationdesignjm.core.material import Concrete
-from foundationdesignjm.core.soil import SoilLayer, SoilType
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc.core.geometry import Column, RectangularFoundation
+from foundationcalc.core.material import Concrete
+from foundationcalc.core.soil import SoilLayer, SoilType
 
 
 def main() -> None:
@@ -41,7 +41,7 @@ def main() -> None:
         a_g=0.20, S=1.15, importance_factor_gamma_I=1.0, r_factor=2.0,
     )
     print("=" * 78)
-    print(f"FoundationDesignJm - Seismic footing 3.0 x 3.0 x 0.7 m")
+    print(f"FoundationCalc - Seismic footing 3.0 x 3.0 x 0.7 m")
     print("=" * 78)
     print(f"a_g = {seism.a_g}, S = {seism.S}, gamma_I = {seism.importance_factor_gamma_I}")
     print(f"k_h = {seism.k_h:.3f},  k_v (up) = {seism.k_v_up:.3f}")

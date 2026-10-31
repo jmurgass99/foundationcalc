@@ -4,21 +4,21 @@ from __future__ import annotations
 
 import pytest
 
-from foundationdesignjm.analysis.cpt import CPTProfile, CPTReading
-from foundationdesignjm.analysis.pile_group import (
+from foundationcalc.analysis.cpt import CPTProfile, CPTReading
+from foundationcalc.analysis.pile_group import (
     converse_labarre_efficiency,
     distribute_loads_rigid_cap,
     mokwa_duncan_lateral_efficiency,
     rectangular_group,
 )
-from foundationdesignjm.analysis.reverse_design import (
+from foundationcalc.analysis.reverse_design import (
     CostModel,
     OptimizationGoal,
     optimize_footing_dimensions,
     optimize_rectangular_footing,
 )
-from foundationdesignjm.codes.eurocode7 import DesignApproach
-from jmstructural_common.audit_status import CalculationStatus
+from foundationcalc.codes.eurocode7 import DesignApproach
+from foundationcalc._common.audit_status import CalculationStatus
 
 
 # ------------------------------------------------------ Reverse design ------

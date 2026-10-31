@@ -2,7 +2,7 @@
 
 import pytest
 
-from foundationdesignjm.codes.eurocode7 import (
+from foundationcalc.codes.eurocode7 import (
     DesignApproach,
     LimitState,
     NationalAnnex,

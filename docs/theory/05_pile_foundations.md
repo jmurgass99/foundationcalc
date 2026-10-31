@@ -151,7 +151,7 @@ A_s = A_s' = M_d / d'
 
 ---
 
-## Notes for `foundationdesignjm`
+## Notes for `foundationcalc`
 
 | Concept | Module |
 |---|---|

@@ -54,14 +54,14 @@ from __future__ import annotations
 import math
 
 import pytest
-from jmstructural_common.model import Reaction
+from foundationcalc._common.model import Reaction
 
-from foundationdesignjm.analysis.boussinesq import (
+from foundationcalc.analysis.boussinesq import (
     BoussinesqRect,
     influence_corner,
     sigma_z_rect_center,
 )
-from foundationdesignjm.integration.foundation_chain import foundation_package
+from foundationcalc.integration.foundation_chain import foundation_package
 
 N_KN = 1000.0
 H_LAYER_M = 3.00

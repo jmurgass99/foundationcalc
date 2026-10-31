@@ -19,7 +19,7 @@ pytestmark = [pytest.mark.safety_critical]
 
 def test_vesic_bowles_ejemplo_4_3():
     try:
-        from foundationdesignjm.services.bearing import (
+        from foundationcalc.services.bearing import (
             SoilLayerSpec, BearingInput, bearing_capacity_multilayer,
         )
     except ImportError:
@@ -38,7 +38,7 @@ def test_vesic_bowles_ejemplo_4_3():
 
 def test_mononobe_okabe_typical_textbook():
     try:
-        from foundationdesignjm.services.seismic import (
+        from foundationcalc.services.seismic import (
             MononobeOkabeInput, mononobe_okabe_thrust,
         )
     except ImportError:
@@ -58,7 +58,7 @@ def test_mononobe_okabe_typical_textbook():
 
 def test_pile_axial_alpha_method():
     try:
-        from foundationdesignjm.services.piles import (
+        from foundationcalc.services.piles import (
             PileAxialInput, design_pile_axial,
         )
     except ImportError:
@@ -81,7 +81,7 @@ def test_pile_axial_alpha_method():
 
 def test_isolated_footing_q_avg_consistent():
     try:
-        from foundationdesignjm.services.footings import (
+        from foundationcalc.services.footings import (
             IsolatedFootingInput, design_isolated_footing,
         )
     except ImportError:
@@ -102,7 +102,7 @@ def test_isolated_footing_q_avg_consistent():
 
 def test_cantilever_wall_overturning_safe():
     try:
-        from foundationdesignjm.services.walls import (
+        from foundationcalc.services.walls import (
             CantileverWallInput, design_cantilever_wall,
         )
     except ImportError:
