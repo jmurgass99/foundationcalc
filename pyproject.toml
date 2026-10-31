@@ -7,7 +7,7 @@ name = "foundationcalc"
 version = "1.0.0"
 description = "Foundation design to EN 1997-1, EN 1998-5, ACI 318 and NSR-10: bearing capacity and settlement, isolated, combined and strap footings, mat foundations (Winkler), pile capacity and pile groups, pile caps, retaining, basement, counterfort, MSE and diaphragm walls, punching shear, reinforcement and PDF reports."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Jesús Murgas" }]
 keywords = ["foundation-design", "eurocode-7", "aci-318", "footings", "piles", "retaining-walls", "punching-shear", "geotechnical", "structural-engineering"]
@@ -16,7 +16,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
