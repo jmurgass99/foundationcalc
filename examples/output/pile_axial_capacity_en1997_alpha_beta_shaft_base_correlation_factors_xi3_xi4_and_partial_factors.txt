@@ -1,0 +1,22 @@
+Pilote Ø800 mm, L = 18.0 m; perímetro 2.5133 m, área 0.5027 m²
+  Fuste arcilla: 2.5133·8·0,5·50 = 502.7 kN
+  Fuste arena:   2.5133·10·0,35·σ'v(13 m) = 2.5133·10·0,35·239 = 2102.4 kN
+  Punta: N_q(34°) = 29.44; σ'v(18 m) = 334 kPa; R_b = 0.5027·29.44·334 = 4942.5 kN
+  R_cal = 7547.6 kN
+
+Paquete con ξ = 1: R_b = 4942.5, R_s = 2605.0, R_c = 7547.6 kN (diferencia +0.0000 %)
+
+perfiles    ξ3    ξ4 R_c;k [kN] con min(ξ) (antes)
+       1  1.40  1.40     5391.1             5391.1
+       2  1.35  1.27     5590.8             5943.0
+       3  1.33  1.23     5674.9             6136.2
+       5  1.29  1.15     5850.8             6563.1
+  (pares ξ3/ξ4 de la Tabla A.10 recomendada tal como suelen citarse; sin contrastar aquí)
+
+conjunto               γ_b   γ_s   γ_t R_c;d [kN]   a mano
+R1 perforado          1.25  1.00  1.00     4685.0   4685.0
+R2 perforado          1.10  1.10  1.00     4901.0   4901.0
+R4 perforado          1.60  1.30  1.00     3637.8   3637.8
+solo γ_t = 1,5        1.00  1.00  1.50     3594.1   3594.1
+La punta aporta el 65 % de R_cal; de los conjuntos probados el que más reduce es «solo γ_t = 1,5» (R_c;d = 3594 kN). Los valores de γ son los que suelen citarse para pilotes perforados (EN 1997-1 Tabla A.7), sin contrastar aquí.
+Límites: N_q de punta de Prandtl-Reissner salvo que se pase otro; β = 0,3 por defecto si no se da; sin rozamiento negativo ni efecto de grupo; los γ_b/γ_s de la tabla anterior son los del ejemplo, no del paquete (sus conjuntos A/M/R de cimentación superficial no traen los de pilotes).

@@ -1,0 +1,22 @@
+   T_v  U serie  √(4T/π)  1−8/π²·e
+ 0.010   0.1128   0.1128    0.2092
+ 0.050   0.2523   0.2523    0.2835
+ 0.100   0.3568   0.3568    0.3667
+ 0.197   0.5003   0.5008    0.5015
+ 0.300   0.6132   0.6180    0.6134
+ 0.500   0.7640   0.7979    0.7640
+ 0.848   0.9000   1.0391    0.9000
+ 1.200   0.9580   1.2361    0.9580
+Inversa (Casagrande/Taylor): T_v(50 %) = 0.1963, T_v(90 %) = 0.8480 (referencias 0,197 y 0,848)
+
+Arcilla H = 4.0 m (doble drenaje), e0 = 1.1, Cc = 0.35, Cr = 0.05, σ'0 = 60, σ'p = 90, Δσ = 80 kPa
+  a mano: 4.0·0.05/2.10·log(90/60) + 4.0·0.35/2.10·log(140/90) = 144.7 mm
+  paquete: 144.7 mm
+  con Δσ = 20 kPa (sin llegar a σ'p): 11.9 mm
+  con Δσ = 200 kPa (muy por encima de σ'p): 323.9 mm
+  si fuese normalmente consolidada: 245.3 mm (1.7 veces más)
+
+H_dr = 2.0 m: t50 = T_v50·H_dr²/cv = 0.1963·2.0²/2.0 = 0.393 años (143 días); t90 = 1.696 años (619 días)
+  t = 0.00 a: 4 mm  t = 0.25 a: 58 mm  t = 0.50 a: 81 mm  t = 0.75 a: 98 mm  t = 1.00 a: 111 mm  t = 1.25 a: 120 mm  t = 1.50 a: 126 mm  t = 1.75 a: 131 mm  t = 2.00 a: 135 mm
+
+Dos módulos duplicados (NC): analysis.consolidacion_1d S_c = 245.3 mm, t90 = 619 d; consolidacion_1d S_c = 245.3 mm, t90 = 620 d (el segundo usa 365,25 días/año y el primero 365). Asiento NC a mano: 245.3 mm.

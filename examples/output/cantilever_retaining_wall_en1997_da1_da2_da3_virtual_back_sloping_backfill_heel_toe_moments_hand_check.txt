@@ -1,0 +1,17 @@
+talud enfoque  K_a,d    H_d    V_d      e portante desliz.  vuelco M_alzado M_talón M_punt.
+    0 DA1-C1  0.2948  141.0  391.4  0.362    0.280   0.577   0.416    190.9   294.5    52.7
+    0 DA1-C2  0.3689  134.6  386.4  0.350    0.558   0.697   0.416    183.2   168.8    56.1
+    0 DA2     0.2948  141.0  391.4  0.362    0.391   0.634   0.416    190.9   294.5    52.7
+    0 DA3     0.3689  176.4  391.4  0.544    1.008   0.902   0.416    236.9   344.0    64.0
+   15 DA1-C1  0.3253  150.3  431.7  0.187    0.249   0.557   0.396    190.9   220.4    48.0
+   15 DA1-C2  0.4189  147.6  425.9  0.197    0.529   0.693   0.396    183.2   101.7    52.8
+   15 DA2     0.3253  150.3  431.7  0.187    0.349   0.613   0.396    190.9   220.4    48.0
+   15 DA3     0.4189  193.5  443.2  0.327    0.865   0.873   0.396    236.9   255.7    59.7
+Peor relación: 1.008 (talud 0°, DA3) -> el muro no cumple en algún caso.
+Gobierna DA3 porque el módulo combina A1 (γ_G = 1,35) con el φ de cálculo M2 sobre el empuje; EN 1997-1 aplica A2 a las acciones geotécnicas en DA3, así que este resultado queda del lado conservador.
+
+DA2 a mano: H_v = 5.55 m, K_a = 0.2948; H_d = 1,35·½·K_a·19·5.55² + 1,5·K_a·10·5.55 = 141.0 kN/m (paquete 141.0)
+  presiones: q(puntera) = 153.6, q(cara puntera) = 126.0, q(cara talón) = 113.6, q(final talón) = 44.6 kPa (e = 0.362 m hacia la puntera)
+  talón: M = 161.8·2,5²/2 − 2,5²·(q_a + 2q_b)/6 = 294.5 kN·m/m (paquete 294.5); puntera: M = (2q_0 + q_t)/6 − 39.1/2 = 52.7 kN·m/m (paquete 52.7)
+  deslizamiento: H_Rd = V_d·tan 32°/γ_φ/γ_R;h = 391.4·0.6249/1.1 = 222.3 kN/m (paquete 222.3)
+Límites: peso del relleno sobre el talón con superficie horizontal aunque haya talud; alzado con Coulomb sin componente cos δ; la portante sustituye el muro por una faja de 10 m; sin agua salvo `water_height`.

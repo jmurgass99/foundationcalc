@@ -1,0 +1,21 @@
+Deslizamiento drenado: N = 1200 kN, H_d = 300 kN, A' = 6.0 m², φ'k = 30.0°
+  Enfoque base             γφ   γRh  δ_d [°] H_Rd [kN]   a mano H_d/H_Rd
+  DA1-C1  in situ        1.00  1.00    30.00     692.8    692.8    0.433
+  DA1-C1  prefabricada   1.00  1.00    20.00     436.8    436.8    0.687
+  DA1-C2  in situ        1.25  1.00    24.79     554.3    554.3    0.541
+  DA1-C2  prefabricada   1.25  1.00    16.53     356.1    356.1    0.842
+  DA2     in situ        1.00  1.10    30.00     629.8    629.8    0.476
+  DA2     prefabricada   1.00  1.10    20.00     397.1    397.1    0.756
+  Gobierna DA1-C2 con base prefabricada: H_d/H_Rd = 0.842 (cumple).
+  Con 2/3 sobre la tangente (antes de la 1.1.0) δ_d habría sido 21.05° en vez de 20.00° (+5.8 % de resistencia).
+No drenado DA1-C2: H_Rd = 40/1.4·6.0/1.0 = 171.4 kN, H_d/H_Rd = 1.75 (no cumple)
+No drenado DA2: H_Rd = 40/1.0·6.0/1.1 = 218.2 kN, H_d/H_Rd = 1.38 (no cumple)
+
+Vuelco: B = 2.5 m, V = 1200 kN, M_dst = 900 kN·m: e_B = 1.25 − (1500 − 900)/1200 = 0.750 m; M_dst/M_stb = 0.600; tercio central (B/6 = 0.417 m): no, hay despegue
+
+Modo de rotura de Vesić bajo una zapata de 2 × 2 m a 5 m en arena suelta (φ' = 30°, q' = 95 kPa, ν = 0,3):
+  E [MPa]  G [kPa] I_r a mano      I_r   I_rc modo               ζ_q
+        4     1538       28.0     28.0   69.6 local_shear      0.472
+        8     3077       56.1     56.1   69.6 local_shear      0.642
+       30    11538      210.4    210.4   69.6 general_shear    1.000
+  I_rc(30°) = ½·exp(2,85·cot 30°) = 69.6 (paquete 69.6). Con I_r < I_rc el diseño desde CPT multiplica q_ult por ζ_q. La constante 2,85 y ζ_q sin término de forma B/L son las del módulo; la dependencia de B/L de la formulación de Vesić no se ha contrastado aquí.

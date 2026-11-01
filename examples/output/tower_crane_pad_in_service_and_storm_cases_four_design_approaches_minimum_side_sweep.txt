@@ -1,0 +1,25 @@
+Zapata 6.5 × 6.5 × 1.6 m con 1.5 m de relleno; mástil 2 × 2 m
+
+caso      enfoque  e [m] régimen          q_max portante  desliz.  vuelco
+servicio  DA1-C1   0.761 centred          195.5    0.044    0.031   0.316
+servicio  DA1-C2   0.761 centred          144.8    0.077    0.029   0.234
+servicio  DA2      0.761 centred          195.5    0.062    0.034   0.316
+tormenta  DA1-C1   1.116 outside_core     220.2    0.056    0.079   0.463
+tormenta  DA1-C2   1.305 outside_core     179.0    0.113    0.086   0.402
+tormenta  DA2      1.116 outside_core     220.2    0.079    0.087   0.463
+
+A mano, tormenta DA2: W = 42.25·(1.6·25 + 1.5·19) = 2894.1 kN; N_d = 1,35·(500 + 2894.1) = 4582.1 kN;
+  M_d = 1,50·(3200 + 130·1.6) = 5112.0 kN·m; e = 1.1157 m (fuera del núcleo L/6 = 1.083 m); q_max = 220.2 kPa (paquete e = 1.1157 m, q_max = 220.2 kPa)
+
+Barrido del lado (todos los enfoques y los dos casos):
+  lado 4.50 m: peor relación ∞ (área eficaz nula: resultante en el borde) (tormenta, DA1-C2) -> no cumple
+  lado 4.75 m: peor relación 1.925 (tormenta, DA1-C2) -> no cumple
+  lado 5.00 m: peor relación 0.924 (tormenta, DA2) -> cumple
+  lado 5.25 m: peor relación 0.815 (tormenta, DA2) -> cumple
+  lado 5.50 m: peor relación 0.723 (tormenta, DA2) -> cumple
+  lado 5.75 m: peor relación 0.643 (tormenta, DA2) -> cumple
+  lado 6.00 m: peor relación 0.575 (tormenta, DA2) -> cumple
+  lado 6.25 m: peor relación 0.515 (tormenta, DA2) -> cumple
+  lado 6.50 m: peor relación 0.463 (tormenta, DA2) -> cumple
+Lado mínimo que cumple todo: 5.00 m.
+Límites: en servicio el momento del gancho se mayora con γ_G (criterio del módulo, no EN 1991-3); el vuelco se toma con el momento resultante sobre el lado menor y el canto no se comprueba estructuralmente.

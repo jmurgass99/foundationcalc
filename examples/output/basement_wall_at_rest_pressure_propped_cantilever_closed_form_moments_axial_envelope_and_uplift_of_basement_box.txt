@@ -1,0 +1,26 @@
+K_0 = 1 − sen 30° = 0.500 (paquete 0.500); q(0) = 5.00 kPa, q(H) = 38.25 kPa
+
+apoyos                R_cab a mano R_base a mano  M_base  a mano M_vano(21 p) M_vano exacto z [m]
+cantilever             0.00   0.00  75.69  75.69  -98.51  -98.51            —             —     —
+propped_cantilever    18.20  18.20  57.49  57.49  -34.81  -34.81        16.28         16.33  1.50
+pinned_pinned         28.15  28.15  47.54  47.54   -0.00    0.00        33.62         33.64  1.96
+  (M > 0 tracciona la cara interior, M < 0 la cara del terreno; momentos en kN·m/m)
+
+Envolvente empotrado-apoyado con axil (e_1 = 5 cm en cabeza):
+  triangular : q =  5.00…38.25 kPa, cara terreno M = -34.81 a z = 3.500 m, cara interior M =  20.74 a z = 1.400 m, V_max = 57.49 kN/m
+  rectangular: q = 25.63…25.63 kPa, cara terreno M = -39.24 a z = 3.500 m, cara interior M =  26.85 a z = 1.225 m, V_max = 56.06 kN/m
+  En cabeza N_max·e_1 = 150·0,05 = 7.50 kN·m/m tracciona la cara interior (envolvente en z = 0: 7.50).
+  El diagrama rectangular (0,67·K_0·(γH + q)) es una regla de apuntes del módulo: con él la resultante es 1.19 veces la trapecial.
+
+Comprobación global como muro libre (factores de seguridad, FS ≥ 1,5 del módulo):
+  rankine : K_a = 0.3333, P =   50.5 kN/m, FS desliz. = 1.75 (≥ 1,5), FS vuelco = 2.15 (≥ 1,5)
+  coulomb : K_a = 0.2973, P =   45.0 kN/m, FS desliz. = 2.27 (≥ 1,5), FS vuelco = 3.01 (≥ 1,5)
+  A mano (Rankine): P = ½·0.3333·19·3,5² + 0.3333·10·3,5 = 50.5; FS desliz. = (W + N)·0,5/P = (26.25 + 150)·0,5/50.5 = 1.75
+
+Flotación del vaso de sótano 20 × 15 m con el freático a 3,0 m sobre la cara inferior de la losa:
+  W =   9000 kN, U = 9,81·3·300 = 8829 kN, W/U = 1.019 -> EU (≥ 1.111): falta lastre 810 kN; USA (≥ 1.500): falta lastre 4244 kN
+  W =   9600 kN, U = 9,81·3·300 = 8829 kN, W/U = 1.087 -> EU (≥ 1.111): falta lastre 210 kN; USA (≥ 1.500): falta lastre 3644 kN
+  W =  10500 kN, U = 9,81·3·300 = 8829 kN, W/U = 1.189 -> EU (≥ 1.111): cumple; USA (≥ 1.500): falta lastre 2744 kN
+  W =  13500 kN, U = 9,81·3·300 = 8829 kN, W/U = 1.529 -> EU (≥ 1.111): cumple; USA (≥ 1.500): cumple
+  Antes de la 1.1.0 el criterio europeo era W/U ≥ 1,10, por debajo de 1/0,9 = 1,111 (γ_G;stb = 0,9).
+Límites: con agua el módulo suma γ_w·H_w a la ordenada de la base y la reparte linealmente en toda la altura además de usar γ total (del lado seguro); el diagrama sin axil sale con 21 puntos y el máximo de vano se queda corto; la comprobación global es de factores de seguridad, no EN 1997-1.

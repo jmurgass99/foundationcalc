@@ -1,0 +1,17 @@
+Caso A: P1 = 900, P2 = 1300 kN, s = 5.0 m, d = 0.5 m, c = 0.45 m, q_adm = 200 kPa
+  a mano: x_R = 1300·5.0/2200 = 2.9545 m desde el pilar 1; L = 2·(0.725 + 2.9545) = 7.3591 m; B = 2200/200/7.3591 = 1.4947 m
+  paquete: forma rectangular, L = 7.3591 m, B = 1.4947 m, A = 11.000 m² (requerida 11.000)
+  Viga invertida: w = 2200/7.3591 = 298.95 kN/m hacia arriba, pilares hacia abajo.
+  Entre pilares el cortante se anula en x = P1/w = 3.0105 m: M = w·x²/2 − P1·(x − 0.725) = -702.2 kN·m (tracción arriba); paquete M_neg = -702.2 kN·m
+  Bajo el pilar 2: M = w·5.725²/2 − P1·5.0 = 399.1 kN·m (tracción abajo); paquete M_pos = 399.1 kN·m
+  Armadura total en el ancho B = 1.495 m (d = 520 mm): superior 3283 mm² para 702 kN·m, inferior 1858 mm² para 399 kN·m. Antes de la 1.1.0 el momento entre pilares no se recogía y la armadura superior salía de los 399 kN·m de bajo el pilar. q_avg = 200.0 kPa,  q_allow = 200.0 kPa
+
+Caso B: pilar 1 en el lindero, P1 = 600, P2 = 1200 kN, s = 4 m, c = 0.4 m
+  paquete: forma trapezoidal, L = 4.80 m, B1 = 0.781 m (lindero), B2 = 2.969 m, A = 9.000 m²
+  centroide del trapecio = 2.8667 m; resultante desde el lindero = c/2 + x_R = 2.8667 m -> coinciden: presión uniforme
+  con la fórmula anterior (sin c/2) el centroide habría ido a 2.6667 m, 20 cm corto.
+
+Memoria (memos.combined_footing) con la planta del caso A redondeada y pilares centrados en la planta:
+  σ_max = 275.0 kPa, σ_min = 126.3 kPa (e = -0.455 m); R_d = 7032 kN frente a 2200 kN -> cumple
+  punzonamiento simplificado: v_Ed = 369 kPa frente a 0,33·√f'c = 1650 kPa
+Límites: el diagrama de flectores usa la presión media aunque la planta sea trapezoidal; la memoria supone voladizos iguales (no el lindero) y su punzonamiento no descuenta la reacción del terreno ni lleva φ.

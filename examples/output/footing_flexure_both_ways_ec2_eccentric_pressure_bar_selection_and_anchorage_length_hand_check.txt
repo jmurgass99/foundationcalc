@@ -1,0 +1,12 @@
+Zapata 3.0 × 2.5 × 0.6 m, N = 1800 kN, M_y = 270 kN·m -> e_x = 0.150 m (L/6 = 0.50)
+A mano (X): q_max = 240.0·(1 + 6·0.150/3.0) = 312.0 kPa; v = 1.360 m; M = 312.0·2.5·1.360²/2 = 721.3 kN·m
+  d = 542 mm, K = 0.0327, z = 514.9 mm, A_s = 3222 mm², A_s,min = 2041 mm²
+
+dir.    M_Ed  A_s,req  A_s,min barras           A_s,disp   l_bd l_disp estado        
+X      721.3     3222     2041 17 Ø16 @ 150         3418    539   1250 OK            
+Y      576.6     2654     2377 14 Ø16 @ 220         2815    539   1000 OK            
+Diferencia con la mano en X: M +0.00e+00, A_s +0.00e+00
+
+Anclaje Ø16 en buena adherencia, σ_sd = f_yd: f_bd = 2,25·0,7·2.896/1,5 = 3.041 MPa; l_b,rqd = (16/4)·434.8/3.041 = 572 mm (paquete 572)
+  con σ_sd = f_yd·A_s,req/A_s,disp: l_bd = 539 mm frente a 1250 mm disponibles -> basta la longitud recta
+Límites: q_max en las dos direcciones (en Y sobra armadura con excentricidad solo en X); sin comprobación de cortante en la sección a d de la cara; la separación máxima min(2,5h, 250 mm) es el criterio del módulo.

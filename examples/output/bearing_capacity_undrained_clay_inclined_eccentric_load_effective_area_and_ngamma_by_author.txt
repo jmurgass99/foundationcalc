@@ -1,0 +1,22 @@
+Zapata 2.0 × 3.0 m, D = 1.2 m, c_u = 60.0 kPa; V = 900 kN, H = 80 kN, e = 0.15 m
+A mano: B' = 2.00 m, L' = 2.70 m, A' = 5.40 m², s_c = 1.1481, i_c = 0.9339; q_ult = 5,1416·60·1.1481·0.9339 + 22.8 = 353.6 kPa
+Paquete: A' = 5.40 m², s_c = 1.1481, i_c = 0.9339, q_ult = 353.6 kPa (diferencia +0.0000 %); R_k = 1909 kN, V/R_k = 0.471
+  γ_R;v = 1.0: R_d = 1909 kN -> V/R_d = 0.471 (cumple)
+  γ_R;v = 1.4: R_d = 1364 kN -> V/R_d = 0.660 (cumple)
+
+Barrido de la carga horizontal (misma V y e):
+   H [kN]  H/(A·c_u)    i_c q_ult [kPa]
+        0      0.000  1.000       377.0
+       80      0.247  0.934       353.6
+      160      0.494  0.856       325.9
+      240      0.741  0.755       290.1
+      324      1.000  0.500       199.9
+  Con H = A'·c_u el deslizamiento no drenado se agota e i_c llega a 0,5: a partir de ahí gobierna el deslizamiento.
+
+N_γ según el autor (N_q común = e^(π·tan φ)·tan²(45° + φ/2)):
+  φ [°]     N_q  EN1997 D   Hansen  Meyerhof   Vesić   máx. dif. a mano
+     25   10.66      9.01     6.76      6.77   10.88   0.0e+00
+     30   18.40     20.09    15.07     15.67   22.40   2.2e-16
+     35   33.30     45.23    33.92     37.15   48.03   2.2e-16
+     40   64.20    106.05    79.54     93.69  109.41   3.3e-16
+  A 35° el mayor N_γ es el de vesic y el menor el de brinch_hansen (1.42 veces): el término de peso propio depende mucho del autor elegido.

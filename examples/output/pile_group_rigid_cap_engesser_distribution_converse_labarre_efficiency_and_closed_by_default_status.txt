@@ -1,0 +1,26 @@
+Grupo 2 × 3, Ø800 mm a 2.4 m; V = 6000 kN, H_x = 600 kN, M_y = 2000 kN·m
+A mano: Σx² = 23.04 m²; N = 1000.0 ± 2000·2,4/23.04 = 1000.0 ± 208.3 kN; θ = 18.435°, E = 0.7610; E_h = 0.750; H_i = 100.0/0.750 = 133.3 kN
+Paquete: E = 0.7610, E_h = 0.750
+  pilote     x     y   N [kN]  H [kN]
+  P11     -2.4  -1.2    791.7   133.3
+  P12      0.0  -1.2   1000.0   133.3
+  P13      2.4  -1.2   1208.3   133.3
+  P21     -2.4   1.2    791.7   133.3
+  P22      0.0   1.2   1000.0   133.3
+  P23      2.4   1.2   1208.3   133.3
+Sin capacidades declaradas: estado NO_CALCULADO, faltan ['axial_capacity_kN', 'lateral_capacity_kN'], all_ok = False
+
+Con capacidades por pilote (1600 compresión, 400 tracción, 180 lateral):
+  axial 0.992 = 1208.3/(1600·0.7610); lateral 0.741; gobierna P13; estado CALCULADO_CUMPLE
+  Con V = 1500 kN y M_y = 6000 kN·m hay tracción: N_min = -375.0 kN, util. tracción 0.94, estado CALCULADO_CUMPLE
+
+Eficiencia de Converse-Labarre frente a s/d (grupo 2 × 3):
+  s/d = 2.00: paquete 0.656, fórmula 0.656
+  s/d = 2.50: paquete 0.717, fórmula 0.717
+  s/d = 3.00: paquete 0.761, fórmula 0.761
+  s/d = 3.50: paquete 0.793, fórmula 0.793
+  s/d = 3.99: paquete 0.818, fórmula 0.818
+  s/d = 4.00: paquete 1.000, fórmula 0.818
+  s/d = 5.00: paquete 1.000, fórmula 0.853
+  El módulo devuelve E = 1 para s/d ≥ 4 aunque la fórmula siga dando < 1 (salto en s/d = 4) y limita E ≥ 0,5: criterio del módulo, a revisar con la práctica local.
+Límites: encepado rígido y pilotes verticales iguales; reparto lateral uniforme dividido por E_h; la E_h de Mokwa y Duncan es una aproximación lineal, no sus p-multiplicadores por fila.

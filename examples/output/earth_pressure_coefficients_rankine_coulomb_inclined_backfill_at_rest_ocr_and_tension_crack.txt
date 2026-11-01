@@ -1,0 +1,25 @@
+φ [°] Ka Rankine Ka Coulomb δ=0  Ka Coulomb δ=⅔φ Kp Rankine   Kp Coulomb δ=⅓φ tan²(45−φ/2)
+   25     0.4059         0.4059           0.3608      2.464             3.124       0.4059
+   30     0.3333         0.3333           0.2973      3.000             4.143       0.3333
+   35     0.2710         0.2710           0.2444      3.690             5.680       0.2710
+   40     0.2174         0.2174           0.1998      4.599             8.147       0.2174
+
+Rankine con relleno inclinado (φ = 30°): K_a y componente horizontal K_a·cos α
+  α [°]     K_a  a mano K_a·cos α  vs α = 0
+      0  0.3333  0.3333    0.3333     +0.0 %
+     10  0.3495  0.3495    0.3442     +3.3 %
+     20  0.4142  0.4142    0.3892    +16.8 %
+     25  0.4936  0.4936    0.4473    +34.2 %
+     30  0.8660  0.8660    0.7500   +125.0 %
+  Antes de la 1.1.0 el muro en ménsula (trasdós virtual) usaba el K_a de α = 0 con cualquier talud.
+
+Reposo K_0 = (1 − sen φ)·OCR^(sen φ), φ = 30°:
+  OCR = 1.0: 0.5000 (a mano 0.5000)
+  OCR = 2.0: 0.7071 (a mano 0.7071)
+  OCR = 4.0: 1.0000 (a mano 1.0000)
+
+Muro de 6.0 m, γ = 19.0, φ = 30.0°, q = 15.0 kPa:
+  activo: P = ½·0.3333·19.0·6.0² + 0.3333·15.0·6.0 = 144.0 kN/m (paquete 144.0) a 2.208 m de la base
+  reposo: P = 216.0 kN/m (1.50 veces el activo)
+  con c' = 10.0 kPa: z_c = 2·10.0/(19.0·√0.3333) = 1.823 m; el módulo da P = ½K_aγH² − 2c√K_a·H = 44.7 kN/m; descontando la grieta (½·K_a·γ·(H − z_c)²) serían 55.2 kN/m.
+Límites: con cohesión el módulo resta 2c√K_a·H sin la grieta (menor que el empuje con grieta) y no mueve el punto de aplicación; Coulomb pasivo con δ grande sobrestima K_p (conviene δ ≤ φ/3).

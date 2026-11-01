@@ -1,0 +1,37 @@
+Carga puntual P = 1000 kN: Δσ_z = 3·P·z³/(2·π·R⁵)
+  z = 1.0 m, r = 0.0 m:   477.46 kPa (a mano   477.46)
+  z = 2.0 m, r = 0.0 m:   119.37 kPa (a mano   119.37)
+  z = 2.0 m, r = 1.0 m:    68.33 kPa (a mano    68.33)
+  z = 4.0 m, r = 2.0 m:    17.08 kPa (a mano    17.08)
+
+Faja flexible B = 2.0 m, q = 100 kPa, z = 2.0 m (integración de 20000 cargas lineales):
+   x [m]  paquete  integral      dif.
+     0.0   54.982    54.982  -0.0000 %
+     0.5   51.050    51.050  -0.0000 %
+     1.0   40.915    40.915  -0.0000 %
+     2.0   18.484    18.484  +0.0000 %
+     3.0    7.059     7.059  +0.0000 %
+  Bajo el eje: 0.550·q (tabla de Das para z/b = 2: 0,550·q)
+
+Círculo flexible R = 1.5 m, q = 100 kPa, bajo el centro (integral de anillos de carga puntual):
+  z = 0.5 m:  96.838 kPa (integral  96.838)
+  z = 1.5 m:  64.645 kPa (integral  64.645)
+  z = 3.0 m:  28.446 kPa (integral  28.446)
+  z = 6.0 m:   8.692 kPa (integral   8.692)
+
+Factor de Newmark bajo la esquina, I(m, n) con m = B/z, n = L/z:
+     m    n   stress boussinesq  integral
+   1.0  1.0   0.1752     0.1752    0.1752
+   0.5  2.0   0.1350     0.1350    0.1350
+   2.0  3.0   0.2378     0.2378    0.2378
+   0.2  0.2   0.0179     0.0179    0.0179
+  Tabla de Newmark/Fadum: I(1, 1) = 0,1752.
+
+Zapata 2.0 × 3.0 m con q = 200 kPa: bajo el centro frente a la regla 2:1 (q·B·L/((B+z)(L+z))):
+  z [m] Boussinesq     2:1 2:1/Bous.  esquina
+    0.5      190.3   137.1      0.72     49.6
+    1.0      154.9   100.0      0.65     47.6
+    2.0       85.7    60.0      0.70     38.7
+    3.0       49.0    40.0      0.82     29.0
+    5.0       20.7    21.4      1.04     16.0
+  Cerca de la base la regla 2:1 infravalora el incremento bajo el centro; en profundidad converge.

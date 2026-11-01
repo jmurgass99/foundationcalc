@@ -1,0 +1,11 @@
+Pilote Ø0.6 m; relleno 0–2 m (no consolida), arcilla 2–10 m (β = 0,25), plano neutro a 8 m
+  a mano: σ'v(2 m) = 36, σ'v(8 m) = 84 kPa; Q_neg = 0,25·60·π·0.6·6 = 169.6 kN
+  paquete: Q_neg = 169.6 kN; carga de servicio en el plano neutro = 900 + 169.6 = 1069.6 kN (19 % más)
+  Plano neutro: 4 m -> 41 kN, 6 m -> 98 kN, 8 m -> 170 kN, 10 m -> 256 kN
+  El paquete no calcula la posición del plano neutro (equilibrio de fuste y punta frente a asientos): hay que darla.
+
+Heurística de pilote con carga excéntrica (no es Brinch Hansen):
+  H =    50 kN, M =     0 kN·m: H_adm =  6126.5 kN, M_adm = 24506.1 kN·m, H/H_adm + M/M_adm = 0.008 -> cumple
+  H =    50 kN, M =   100 kN·m: H_adm =  6126.5 kN, M_adm = 24506.1 kN·m, H/H_adm + M/M_adm = 0.012 -> cumple
+  H =   120 kN, M =   200 kN·m: H_adm =  6126.5 kN, M_adm = 24506.1 kN·m, H/H_adm + M/M_adm = 0.028 -> cumple
+  K_q(z = L/2) = (1 + tan 30°)²·(1 + 0,5·6/0,8) = 11.82; H_adm = 18·6·K_q·0,8·12/2 = 6127 kN: la capacidad lateral sale de un empuje medio sobre medio fuste, sin mecanismo de rotura ni momento de plastificación del pilote. Para pilotes con carga lateral usa `solve_pile_lateral`.

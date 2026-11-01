@@ -1,0 +1,20 @@
+Pilar interior 500 × 500 mm, d = 300 mm, V_u = 900 kN, M_u = 100 kN·m, f'c = 30 MPa
+A mano: b0 = 3200 mm, A_c = 960000 mm², γ_v = 0.400, J_c = 1.0600e+11 mm⁴
+  v = 0.9375 + 0.1509 = 1.0884 MPa; λ_s = 0.9535; v_c = 1.7234 MPa; φ·v_c = 1.2925 MPa -> 0.842
+Paquete: v_ug,max = 1.0884 MPa, φ·v_c = 1.2925 MPa, DCR = 0.842 (cumple)
+
+posición   b0 [mm]   γ_vx  v_dir  v_mom   φv_c    DCR
+interior      3200  0.400  0.938  0.151  1.293  0.842
+edge          2100  0.425  1.429  0.218  1.293  1.274
+corner        1300  0.400  2.308  1.047  1.293  2.595
+Con las mismas cargas la peor posición es «corner»: el perímetro se reduce a 3 o 2 lados.
+
+Barrido del momento (pilar interior):
+  M_u =     0 kN·m: v_max = 0.938 MPa, DCR = 0.725
+  M_u =   100 kN·m: v_max = 1.088 MPa, DCR = 0.842
+  M_u =   200 kN·m: v_max = 1.239 MPa, DCR = 0.959
+  M_u =   300 kN·m: v_max = 1.390 MPa, DCR = 1.076
+  M_u =   400 kN·m: v_max = 1.541 MPa, DCR = 1.192
+  M_u =   500 kN·m: v_max = 1.692 MPa, DCR = 1.309
+  Primer momento del barrido que agota: 300 kN·m.
+Límites: el perímetro de borde y esquina se toma con el borde libre normal a X; sin armadura de punzonamiento; el momento sobre Y se suma con el mismo criterio (v_max en la esquina más cargada).

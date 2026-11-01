@@ -1,0 +1,12 @@
+z [m] suelo   N σ_v0_eff    N60  N1(60)  φ H-U  φ JRA  φ PHT D_R %    c_u E Schm. E Bowles
+  1.5 sand    8    27   9.33   17.96   39.0   31.4   29.9    55      —     7.1     12.2
+  3.0 sand   14    50  16.33   23.10   41.5   33.6   31.9    62      —    12.5     15.7
+  6.0 sand   22    80  25.67   28.70   44.0   35.7   34.4    69      —    19.7     20.3
+  9.0 sand   31   110  36.17   34.48   46.3   37.7   37.2    76      —    27.7     25.6
+ 12.0 clay   12   140  14.00   11.83      —      —      —     —   63.0     4.5      5.6
+ 15.0 clay   16   170  18.67   14.32      —      —      —     —   84.0     6.0      7.5
+
+A mano, 6 m: N60 = 22·70/60 = 25.667; C_N = √(100/80) = 1.1180; N1(60) = 28.696
+  φ' (H-U) = √(20·28.696) + 20 = 43.96°; D_R = √(28.696/60) = 69.2 %; E = 0,766·25.67 = 19.66 MPa (paquete 19.66)
+  Las tres correlaciones de φ' en 6 m van de 34.4° a 44.0°: 9.5° de dispersión entre autores para el mismo golpeo.
+Límites: C_N de Liao y Whitman sin corrección por diámetro, varillaje ni tomamuestras; correlaciones empíricas sin calibración local; E de Schmertmann para arena se aplica igual a arena seca y saturada.

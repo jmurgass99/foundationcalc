@@ -1,0 +1,30 @@
+Pantalla H = 10.0 m, φ' = 32.0°, γ = 20.0 kN/m³, puntal en cabeza, DA2 (γ_G = 1,35, γ_R;e = 1,4)
+  ficha D   P_a,d   P_p,d F = M_p/M_a P_p,mob T puntal   M_max z(M_max)
+      5.0   933.3   581.2       0.830   700.0    233.3    1167     7.50  <- ficha insuficiente (F < 1)
+      6.0  1061.9   836.9       1.034   809.1    252.8    1316     7.81
+      7.0  1198.8  1139.1       1.230   926.3    272.4    1472     8.10
+      8.0  1343.9  1487.8       1.415  1051.8    292.2    1635     8.39
+      9.0  1497.4  1883.0       1.588  1185.5    312.0    1804     8.67
+  Ficha para F = 1,5 sobre valores de cálculo: D = 8.48 m (el 1,5 se suma a los coeficientes parciales: doble seguridad heredada del módulo)
+  A mano (D = 7 m): K_a = 0.3073, K_p = 3.255, k = 1,35·K_a·γ = 8.296 kN/m³; P_a = 1198.8, M_a = 13586, P_p = 1139.1, F = 1.230; T = 1198.8 − 13586/14.667 = 272.4 kN/m; z0 = 8.10 m, M_max = ⅔·T·z0 = 1472 kN·m/m
+  Fórmulas anteriores a la 1.1.0: T = P_a − P_p = 59.7 kN/m y M = T²/(2·k·(H + D)) = 12.6 kN·m/m
+  DA1-C1: γ_φ = 1.0, γ_R;e = 1.0: F = 1.722, T = 272.4 kN/m, M_max = 1472 kN·m/m
+  DA1-C2: γ_φ = 1.25, γ_R;e = 1.0: F = 1.503, T = 250.9 kN/m, M_max = 1356 kN·m/m
+  DA3   : γ_φ = 1.25, γ_R;e = 1.0: F = 1.114, T = 338.8 kN/m, M_max = 1830 kN·m/m
+
+Excavación apuntalada de 9 m, puntales a 1,5 / 4,5 / 7,5 m, separación horizontal 4 m:
+  arena φ' = 34°: p = 0,65·K_a·γ·H = 0,65·0.2827·19·9 = 31.42 kPa; z = 1.5 m (0.0–3.0): 377 kN, z = 4.5 m (3.0–6.0): 377 kN, z = 7.5 m (6.0–9.0): 377 kN
+  suma de puntales 1131 kN = p·H·s = 1131 kN (sin base: el último puntal recoge hasta el fondo)
+  arcilla blanda c_u = 25 kPa: N_s = γH/c_u = 6.48, K = 1 − 0,4·4·c_u/(γH) = 0.753, p = 122.0 kPa; puntales 1464, 1464, 1464 kN
+    levantamiento de fondo: zanja 12 × 60 m N_c = 5.14, FS = 0.75; recinto 12 × 12 m N_c = 6.84, FS = 0.99 -> insuficiente frente al FS = 1,5 habitual
+  arcilla blanda c_u = 40 kPa: N_s = γH/c_u = 4.05, K = 1 − 0,4·4·c_u/(γH) = 0.605, p = 98.0 kPa; puntales 1176, 1176, 1176 kN
+    levantamiento de fondo: zanja 12 × 60 m N_c = 5.14, FS = 1.20; recinto 12 × 12 m N_c = 6.84, FS = 1.59 -> insuficiente frente al FS = 1,5 habitual
+  Ojo: N_c salta de 5.93 (L = 59,9 m) a 5.14 (L = 60 m = 5B) porque el módulo mezcla 5,7·(1 + 0,2B/L) con 5,14 de faja (sin contrastar).
+  basal_heave_clay con N_c = 5,14: FS = 5,14·25/(18·9) = 0.793
+
+Muro anclado de 8 m en arena (φ' = 32°, γ = 19, q = 10 kPa), dos niveles de anclajes activos a 2 y 5 m cada 2,5 m:
+  P_total = 1,35·0,65·K_a·γ·H·H + 1,35·0,5·q·H = 381.9 kN/m (paquete 381.9)
+  z = 2.0 m: T_d = 494 kN/anclaje (P/2·2,5/cos 15°), libre 4.50 m, bulbo 5.24 m, utilización 1.000, bloqueo 371 kN
+  z = 5.0 m: T_d = 494 kN/anclaje (P/2·2,5/cos 15°), libre 4.50 m, bulbo 5.24 m, utilización 1.000, bloqueo 371 kN
+  Los dos niveles reciben lo mismo aunque estén a 2 y 5 m, y la utilización del bulbo vale 1 por construcción: el módulo dimensiona, no verifica. Para reparto por áreas tributarias usa `strut_force`.
+Límites: soporte libre con un puntal (con varios, reparto a partes iguales sin equilibrio de momentos); sin cohesión ni agua en la pantalla (el módulo ahora lo rechaza); envolvente de arcilla blanda rectangular desde coronación; q_s, γ_a = 1,5 y K = 0,5 de la sobrecarga del muro anclado sin contrastar.

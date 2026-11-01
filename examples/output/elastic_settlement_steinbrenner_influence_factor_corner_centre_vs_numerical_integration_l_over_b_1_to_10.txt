@@ -1,0 +1,13 @@
+  L/B  esquina  integral   centro 2×integral fórmula anterior
+  1.0   0.5611    0.5608   1.1222     1.1216           1.1222
+  1.5   0.6788    0.6784   1.3576     1.3567           1.5389
+  2.0   0.7659    0.7653   1.5317     1.5306           2.1444
+  3.0   0.8915    0.8907   1.7830     1.7814           3.6814
+  5.0   1.0523    1.0509   2.1046     2.1018           7.4872
+ 10.0   1.2721    1.2694   2.5443     2.5388          19.1508
+La integral de malla queda entre 0.06 % y 0.22 % por debajo de la fórmula (la singularidad 1/r de la esquina se integra con error de malla); la fórmula anterior solo acertaba en L/B = 1.
+
+Zapata flexible 2.0 × 3.0 m, q = 150 kPa, E = 25 MPa, ν = 0.3:
+  a mano: I_s,centro = 1.3576; s = 150·2.0·(1 − 0.3²)/25000·1.3576 = 14.82 mm
+  paquete: centro 14.82 mm, esquina 7.41 mm (la esquina es la mitad del centro: 0.500).
+Límite: semiespacio homogéneo de espesor infinito; con un estrato rígido a poca profundidad el asiento es menor (factores de Steinbrenner con H/B, no implementados aquí).

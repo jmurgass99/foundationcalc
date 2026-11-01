@@ -1,0 +1,12 @@
+Validación lineal: EI = 200000 kN·m², k = 20000 kN/m³ (Reese en arena con cargas diminutas), L = 20.0 m, T = 1.5849 m, L/T = 12.6
+  caso                         y0 FD [m]  y0 BVP [m] Matlock-Reese     M0 FD    M0 BVP
+  cabeza libre, H = 0,01      4.8463e-07  4.8354e-07    4.8470e-07   0.00000   0.00000
+  cabeza libre, M = 0,01      2.0426e-07  2.0339e-07    2.0384e-07   0.01000   0.01000
+  encepado, H = 0,01          1.8496e-07  1.8469e-07    1.8512e-07  -0.01472  -0.01469
+  M0 del encepado según Matlock y Reese: −0,93·H·T = -0.01474 kN·m
+
+Pilote Ø0.8 m, 20 m, EI = 600000 kN·m² en arcilla blanda (Matlock, c_u = 30 kPa), H = 150 kN:
+  libre   : y0 =   16.0 mm, |M|max =  344.2 kN·m a  4.4 m, M en cabeza =     0.0 kN·m, primer cero de y a 7.6 m, p máx =  37.1 kN/m
+  encepado: y0 =    4.3 mm, |M|max =  358.0 kN·m a  0.0 m, M en cabeza =  -358.0 kN·m, primer cero de y a 8.2 m, p máx =  28.0 kN/m
+  Resistencia última de Matlock a 2 m: p_u = (3 + γ'z/c_u + J·z/D)·c_u·D = 114.8 kN/m (tope 9·c_u·D = 216)
+Límites: curvas API en arena con A = 0,9 (cíclica) siempre y k aproximado; la curva de Reese es la envolvente hiperbólica simplificada; API en arcilla cíclica con reducción lineal propia del módulo.

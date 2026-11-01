@@ -1,0 +1,43 @@
+=== foundationcalc v1.1.0 — API REST FastAPI ===
+
+1. GET / -> Nombre: FoundationCalc
+   Endpoints registrados: 6
+     - /api/footings/isolated
+     - /api/walls/cantilever
+     - /api/piles/axial
+     - /api/bearing/multilayer
+     - /api/seismic/mononobe_okabe
+     - /jobs/*
+
+2. POST /api/footings/isolated (Zapata 2,5×2,5 m, N = 1500 kN):
+   q_max = 316.80 kPa, q_min = 163.20 kPa, q_avg = 240.00 kPa
+   Punzonamiento DCR = 0.422 (Vu = 1260.0 kN, Vc = 3976.5 kN)
+   Armado flexión X: As_req = 1702 mm², elegido = 2268 mm²
+   Armado flexión Y: As_req = 1702 mm², elegido = 2268 mm²
+   [OK] Coincidencia exacta con footings.design_isolated_footing
+
+3. POST /api/walls/cantilever (Muro ménsula H = 4,5 m):
+   FS deslizamiento = 1.069
+   FS vuelco        = 2.864
+   bearing_FS       = None (no evaluado por este servicio)
+   Fuste: M_stem = 107.1 kN·m/m, espesor mín = 350 mm
+   [OK] Coincidencia exacta con walls.design_cantilever_wall
+
+4. POST /api/piles/axial (Pilote Ø0,8 m, L = 15 m en arcilla):
+   Q_skin      = 1256.6 kN
+   Q_tip       = 361.9 kN
+   Q_ultimate  = 1618.5 kN
+   Q_allowable = 539.5 kN (FS = 3.0)
+   [OK] Equilibrio de capacidad axial verificado
+
+5. POST /api/bearing/multilayer (Zapata 2,5×2,5 m, estrato Vesić):
+   qu = 1172.08 kPa, qa = 390.69 kPa (FS = 3.0)
+
+6. POST /api/seismic/mononobe_okabe (H = 5 m, kh = 0,15, kv = 0,05):
+   K_AE = 0.3606, P_AE = 81.37 kN/m, theta = 8.97°
+
+Límites documentados:
+  - Los endpoints de la API delegan en los servicios predimensionadores.
+  - /api/footings/isolated usa tensiones admisibles frente a ACI 318-19, no Eurocódigo 7.
+  - /api/walls/cantilever reporta bearing_FS como nulo (la capacidad portante debe verificarse con CantileverWallDesigner).
+  - /api/bearing/multilayer es un servicio histórico/deprecado; la calculadora canónica es analysis.bearing_capacity.
