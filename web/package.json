@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "test": "node --input-type=module src/__tests__/foundationWeb.test.ts"
+    "test": "node src/__tests__/foundationWeb.test.ts"
   },
   "dependencies": {
     "three": "^0.170.0",

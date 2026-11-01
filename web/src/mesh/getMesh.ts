@@ -1,4 +1,4 @@
-import { SemanticSoilLayer, SoilSublayerMapping, SublayerDiscretization } from "../data-model.ts";
+import type { SemanticSoilLayer, SoilSublayerMapping, SublayerDiscretization } from "../data-model.ts";
 
 export function getFoundationSublayerMesh(
   widthBM: number,

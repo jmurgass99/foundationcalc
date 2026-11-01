@@ -1,4 +1,4 @@
-import { FoundationResult, SemanticSoilLayer } from "../data-model.ts";
+import type { FoundationResult, SemanticSoilLayer } from "../data-model.ts";
 import { getFoundationSublayerMesh } from "../mesh/getMesh.ts";
 
 // Binario WebAssembly compilado desde consolidationKernel.cpp (exporta fdConsolidationNode y bulbStress2to1)
