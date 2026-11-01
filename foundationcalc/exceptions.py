@@ -1,6 +1,6 @@
 """Jerarquia de excepciones tipadas de FoundationCalc.
 
-Permite al caller (desktop GUI, dashboard Streamlit, REST API, AI Copilot)
+Permite al caller (desktop GUI, dashboard Streamlit, REST API)
 diferenciar la naturaleza del fallo y reaccionar apropiadamente.
 
 Ejemplo:
