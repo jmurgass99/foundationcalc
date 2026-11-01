@@ -112,13 +112,23 @@ def gazetas_stiffness(
 ) -> WinklerStiffness:
     """Calcula rigideces de Gazetas para zapata rectangular rigida.
 
-    Formulas (zapata cuadrada/rectangular L >= B sobre semi-espacio):
+    Formulas de Gazetas (1991) tal como las recoge NIST GCR 12-917-21
+    (Tabla 2-2a), con L y B las SEMIDIMENSIONES (la zapata mide 2L × 2B,
+    L >= B) e I_bx, I_by, J_t de la superficie de contacto completa:
         Kz   = 2*G*L / (1-nu) * [0.73 + 1.54*(B/L)^0.75]
         Ky   = 2*G*L / (2-nu) * [2.0 + 2.5*(B/L)^0.85]
         Kx   = Ky - 0.2*G*L / (0.75-nu) * [1 - (B/L)]
         Krx  = G/(1-nu) * I_bx^0.75 * (L/B)^0.25 * (2.4 + 0.5*B/L)
-        Kry  = G/(1-nu) * I_by^0.75 * (L/B)^0.15 * (3.0 + 0.5*B/L)
-        Krz  = 3.5 * G * J_t^0.75
+        Kry  = G/(1-nu) * I_by^0.75 * 3 * (L/B)^0.15
+        Krz  = G * J_t^0.75 * [4 + 11*(1 - B/L)^10]
+
+    `FootingGeometry` recibe las dimensiones COMPLETAS; aqui se dividen por 2.
+
+    DEFECTO CORREGIDO (1.1.0): las traslaciones usaban la longitud completa
+    donde la formula pide la semilongitud (Kz, Ky y Kx el doble: zapata de
+    2 × 2 m, G = 76 MPa, nu = 0,35 -> Kz 1 061 662 en vez de 530 831 kN/m),
+    Kry llevaba (3 + 0,5·B/L) en lugar de 3 (+17 % en cuadrada) y Krz era
+    3,5·G·J^0,75 sin el termino de forma (-12,5 % en cuadrada).
 
     Para suelo estratificado, usa _equivalent_layer hasta depth ~= 2*B.
     """
@@ -129,21 +139,22 @@ def gazetas_stiffness(
         layer = _equivalent_layer(soil, depth_inf)
     G = layer.G
     nu = layer.nu
-    L = max(footing.L, footing.B)
-    B = min(footing.L, footing.B)
+    L = max(footing.L, footing.B)       # dimension completa mayor
+    B = min(footing.L, footing.B)       # dimension completa menor
     ratio = B / L
-    # Traslaciones (Gazetas)
-    Kz = 2.0 * G * L / (1.0 - nu) * (0.73 + 1.54 * ratio ** 0.75)
-    Ky = 2.0 * G * L / (2.0 - nu) * (2.0 + 2.5 * ratio ** 0.85)
-    Kx = Ky - 0.2 * G * L / (0.75 - nu) * (1.0 - ratio)
-    # Rotaciones (rocking)
+    L_half = L / 2.0                    # Gazetas trabaja con 2L x 2B
+    # Traslaciones (Gazetas 1991, semilongitud)
+    Kz = 2.0 * G * L_half / (1.0 - nu) * (0.73 + 1.54 * ratio ** 0.75)
+    Ky = 2.0 * G * L_half / (2.0 - nu) * (2.0 + 2.5 * ratio ** 0.85)
+    Kx = Ky - 0.2 * G * L_half / (0.75 - nu) * (1.0 - ratio)
+    # Rotaciones (rocking): inercias de la superficie de contacto completa
     I_bx = (L * B ** 3) / 12.0      # inercia alrededor X
     I_by = (B * L ** 3) / 12.0      # inercia alrededor Y
     Krx = G / (1.0 - nu) * I_bx ** 0.75 * (L / B) ** 0.25 * (2.4 + 0.5 * ratio)
-    Kry = G / (1.0 - nu) * I_by ** 0.75 * (L / B) ** 0.15 * (3.0 + 0.5 * ratio)
-    # Torsion (St. Venant aprox)
-    J_t = (L * B * (L ** 2 + B ** 2)) / 12.0
-    Krz = 3.5 * G * J_t ** 0.75
+    Kry = G / (1.0 - nu) * I_by ** 0.75 * 3.0 * (L / B) ** 0.15
+    # Torsion: J_t = I_bx + I_by (momento polar de la superficie de contacto)
+    J_t = I_bx + I_by
+    Krz = G * J_t ** 0.75 * (4.0 + 11.0 * (1.0 - ratio) ** 10)
     return WinklerStiffness(Kx=Kx, Ky=Ky, Kz=Kz, Krx=Krx, Kry=Kry, Krz=Krz)
 
 

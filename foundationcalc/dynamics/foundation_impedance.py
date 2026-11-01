@@ -7,12 +7,13 @@ vertical, two horizontal, two rocking and torsional DOFs of the
 footing-soil interface, ready to be plugged into any dynamic structural
 solver as a flexible boundary condition.
 
-Static stiffness (Gazetas 1991, Table 1, rectangle L×B with L ≥ B):
+Static stiffness (Gazetas 1991, Table 1, rectangle 2L×2B with L ≥ B, L and B
+being the HALF dimensions, as in NIST GCR 12-917-21 Table 2-2a):
 
-    K_v = G·L / (1 − ν) · [ 0.73 + 1.54 · (B / L) ^ 0.75 ]
-    K_hx = G·L / (2 − ν) · [ 2 + 2.5 · (B / L) ^ 0.85 ]
+    K_v = 2·G·L / (1 − ν) · [ 0.73 + 1.54 · (B / L) ^ 0.75 ]
+    K_hx = 2·G·L / (2 − ν) · [ 2 + 2.5 · (B / L) ^ 0.85 ]
     K_hy = K_hx − 0.2 · G·L / (0.75 − ν) · (1 − B / L)
-    K_rx = G·I_x ^ 0.75 / (1 − ν) · [ (L / B) ^ 0.25 ] · (3 ...)        (rocking about x)
+    K_rx = G·I_x ^ 0.75 / (1 − ν) · (L / B) ^ 0.25 · (2.4 + 0.5·B/L)   (rocking about x)
     K_ry = G·I_y ^ 0.75 / (1 − ν) · 3 · (L / B) ^ 0.15                  (rocking about y)
     K_t  = G·J ^ 0.75 · [4 + 11·(1 − B / L) ^ 10]                       (torsion)
 
@@ -212,8 +213,14 @@ def rectangular_footing_impedance(
     J = I_x + I_y
 
     # ----- Static stiffness (Gazetas 1991 surface rectangle) -------------
-    K_v_static = G * half_L / (1.0 - nu) * (0.73 + 1.54 * BL ** 0.75)
-    K_hx_static = G * half_L / (2.0 - nu) * (2.0 + 2.5 * BL ** 0.85)
+    # DEFECTO CORREGIDO (1.1.0): faltaba el factor 2 de 2·G·L/(1−ν) y
+    # 2·G·L/(2−ν) (NIST GCR 12-917-21, Tabla 2-2a, L = semilongitud): las dos
+    # rigideces de traslacion salian a la mitad (2 × 2 m, G = 76 MPa,
+    # nu = 0,35: K_v 265 415 en vez de 530 831 kN/m). `horizontal_x` es la
+    # rigidez (2 + 2,5·(B/L)^0,85), que en la notacion de NIST es K_y
+    # (traslacion paralela al lado corto); `horizontal_y` es la K_x de NIST.
+    K_v_static = 2.0 * G * half_L / (1.0 - nu) * (0.73 + 1.54 * BL ** 0.75)
+    K_hx_static = 2.0 * G * half_L / (2.0 - nu) * (2.0 + 2.5 * BL ** 0.85)
     K_hy_static = K_hx_static - 0.2 * G * half_L / (0.75 - nu) * (1.0 - BL)
     K_rx_static = G * I_x ** 0.75 / (1.0 - nu) * (half_L / half_B) ** 0.25 * (2.4 + 0.5 * BL)
     K_ry_static = G * I_y ** 0.75 / (1.0 - nu) * 3.0 * (half_L / half_B) ** 0.15

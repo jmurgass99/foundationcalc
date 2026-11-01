@@ -113,28 +113,33 @@ def test_golden_punching_standard_branch_u1_and_tau_sd_ec2():
         Soporte c1 = c2 = 400 mm, centrado (pos 1500, 1500) -> β = 1.15 (interior)
         d = 0.500 m, N_sd = 800 kN, f_ck = 25 MPa, ρ_x = ρ_y = 0.005, γ_c = 1.5
 
-    Derivación (EC2 §6.4, ecuaciones (1)-(8) del docstring del módulo):
+    Hasta la 1.1.0 esta rama comprobaba SOLO el perímetro a 2d (η = 0.2338).
+    EC2 §6.4.2(2) y §6.4.4(2) piden en bases de pilar los perímetros a a ≤ 2d
+    con τ_Rd·2d/a (ec. 6.50); el módulo barre 40 valores de a en [0.1d, 2d].
 
-      u1   = 2·0.4 + 2·0.4 + 2π·1.0            = 7.883185307 m
-      A_u1 = 0.16 + 2·0.8·1.0 + π·1.0²         = 4.901592654 m²
-      A_u1 (4.9016) < A_zapata (9.0)  ->  rama estándar, a_crit = 2d = 1.000 m
+    Derivación (ecuaciones (3)-(8) del docstring del módulo):
 
-      F_sd    = 800 · (9.000 - 4.901592654)/9.000
-              = 800 · 0.455378594                = 364.302875236 kN      [ec. (5)]
-      F_sd,ef = 1.15 · 364.302875236                = 418.948306522 kN
-      τ_sd    = 418.948306522 / (7.883185307·0.500)
-              = 418.948306522 / 3.941592654         = 106.289092593 kPa     [ec. (6)]
+      ξ       = 1 + sqrt(200/500) = 1.632455532
+      τ_Rd,c  = 0.12·1.632455532·12.5^(1/3) = 454.631242131 kPa
+      v_min   = 0.035·ξ^1.5·√25 = 365 kPa < τ_Rd,c (no gobierna)
 
-      ξ       = 1 + sqrt(200/500) = 1 + 0.632455532 = 1.632455532
-      τ_Rd,c  = (0.18/1.5)·1.632455532·12.5^(1/3)
-              = 0.12·1.632455532·2.320794417 = 0.454631242 MPa
-              = 454.631242131 kPa                                        [ec. (7)]
+      En a = 2d = 1.000 m (el antiguo único perímetro):
+        u = 7.883185307 m, A_u = 4.901592654 m², F_sd = 364.302875236 kN,
+        τ_sd = 1.15·364.30/(7.8832·0.5) = 106.289092593 kPa, η = 0.233791880
 
-      η       = 106.289092593 / 454.631242131          = 0.233791880
+      Perímetro que gobierna del barrido, a = 0.1d + 15·(1.9d/39) = 0.512820513 m:
+        u(a)   = 1.6 + 2π·0.512820513           = 4.822146311 m
+        A_u(a) = 0.16 + 1.6·0.512820513 + π·0.512820513² = 1.806163...
+        F_sd   = 800·(9 − A_u)/9                = 639.404072675 kN
+        τ_sd   = 1.15·639.404/(4.822146·0.5)    = 304.974024468 kPa
+        τ_Rd(a)= 454.631242·(1.0/0.512820513)   = 886.530922156 kPa
+        η      = 304.974/886.531                = 0.344008333
+
+      Un barrido fino (20 001 puntos) da η = 0.344036 en a = 0.506 m: el de 40
+      puntos queda a −0.008 %. Frente a 2d, +47 %.
 
     MATA al mutante `u1 * d > 0` -> `u1 * d < 0`: con la guarda invertida la
-    condición nunca se cumple, τ_sd colapsa al literal 0.0 y η = 0, pero el
-    veredicto sigue siendo "PASS". Sólo aseverar el NÚMERO lo detecta.
+    función lanza ValueError en un caso válido.
     """
     foundation = RectangularFoundation(length=3000.0, width=3000.0, thickness=600.0)
     column = Column(length=400.0, width=400.0, pos_x=1500.0, pos_y=1500.0)
@@ -153,23 +158,25 @@ def test_golden_punching_standard_branch_u1_and_tau_sd_ec2():
     assert res.is_compact is False
     assert res.applicable is True
 
-    # Perímetro de control básico y distancia de control
-    assert res.u1 == pytest.approx(7.883185307, rel=1e-8)
-    assert res.u_crit_m == pytest.approx(7.883185307, rel=1e-8)
-    assert res.a_crit_m == pytest.approx(1.000, rel=1e-8)
+    # Perímetro que gobierna (dentro de 2d)
+    assert res.a_crit_m == pytest.approx(0.512820513, rel=1e-8)
+    assert res.u1 == pytest.approx(4.822146311, rel=1e-8)
+    assert res.u_crit_m == pytest.approx(4.822146311, rel=1e-8)
 
     # Cadena de acciones
     assert res.beta == pytest.approx(1.15, rel=1e-12)
-    assert res.F_sd == pytest.approx(364.302875236, rel=1e-8)
-    assert res.F_sd_ef == pytest.approx(418.948306522, rel=1e-8)
-
-    # ---- La aserción que mata al mutante de la guarda `u1 * d > 0` ----
-    assert res.tau_sd == pytest.approx(106.289092593, rel=1e-8)
+    assert res.F_sd == pytest.approx(639.404072675, rel=1e-8)
+    assert res.F_sd_ef == pytest.approx(1.15 * 639.404072675, rel=1e-8)
+    assert res.tau_sd == pytest.approx(304.974024468, rel=1e-8)
 
     # Resistencia y utilización
     assert res.xi == pytest.approx(1.632455532, rel=1e-8)
     assert res.tau_rd == pytest.approx(454.631242131, rel=1e-8)
-    assert res.utilization == pytest.approx(0.233791880, rel=1e-8)
+    assert res.tau_rd_scaled_kPa == pytest.approx(886.530922156, rel=1e-8)
+    assert res.utilization == pytest.approx(0.344008333, rel=1e-8)
+
+    # El antiguo perímetro a 2d da menos: el barrido nunca reduce la utilización
+    assert res.utilization > 0.233791880
 
 
 def test_golden_punching_compact_control_perimeter_identities_ec2():

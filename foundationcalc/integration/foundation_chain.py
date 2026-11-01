@@ -1030,10 +1030,56 @@ def _generate_memoria_markdown(
         f"- **Número de Zapatas Individuales:** {quantities['footings_count']}",
         f"- **Número de Zapatas Combinadas:** {quantities['combined_footings_count']}\n",
         f"---",
-        f"**Estado Global:** TODAS LAS COMPROBACIONES CUMPLEN SATISFACTORIAMENTE.",
+        _estado_global_memoria(design_summary, punching_checks, flexure_rebar),
     ])
 
     return "\n".join(lines)
+
+
+#: Estados del dimensionado en planta que NO son un diseño que cumple.
+_ESTADOS_FALLA = ("SLIDING_GOVERNS", "EXCEEDED")
+_ESTADOS_REVISAR = ("UPLIFT_GOVERNS", "NO_LOAD", "SWITCH_A_PILOTES")
+
+
+def _estado_global_memoria(
+    design_summary: dict[str, dict[str, Any]],
+    punching_checks: dict[str, PunchingShearResult],
+    flexure_rebar: dict[str, dict[str, FootingFlexureDetail]],
+) -> str:
+    """Línea de estado global de la memoria, calculada a partir de los resultados.
+
+    DEFECTO CORREGIDO (1.1.0): la memoria terminaba SIEMPRE con «TODAS LAS
+    COMPROBACIONES CUMPLEN SATISFACTORIAMENTE», aunque la tabla de
+    punzonamiento de dos líneas más arriba dijera FALLA o una zapata
+    estuviera en SLIDING_GOVERNS. Ahora el veredicto sale de los datos.
+    """
+    fallan: list[str] = []
+    revisar: list[str] = []
+    for nid, ds in design_summary.items():
+        st = str(ds.get("status", ""))
+        if st.startswith(_ESTADOS_FALLA):
+            fallan.append(f"`{nid}` ({st})")
+        elif st.startswith(_ESTADOS_REVISAR):
+            revisar.append(f"`{nid}` ({st.split(':')[0]})")
+    for nid, pch in punching_checks.items():
+        if not pch.applicable:
+            revisar.append(f"`{nid}` (punzonamiento no aplicable)")
+        elif not pch.is_ok:
+            fallan.append(f"`{nid}` (punzonamiento, DCR {pch.utilization:.2f})")
+    for nid, reb in flexure_rebar.items():
+        for axis, det in reb.items():
+            if det.status == "NO CALCULADO":
+                revisar.append(f"`{nid}` (flexión {axis} no calculada)")
+    if fallan:
+        txt = "**Estado Global:** NO CUMPLE — " + ", ".join(fallan) + "."
+        if revisar:
+            txt += " Además requieren revisión: " + ", ".join(revisar) + "."
+        return txt
+    if revisar:
+        return ("**Estado Global:** REQUIERE REVISIÓN — "
+                + ", ".join(revisar) + ".")
+    return ("**Estado Global:** las comprobaciones incluidas en esta memoria "
+            "(planta, punzonamiento y flexión) cumplen.")
 
 
 __all__ = [

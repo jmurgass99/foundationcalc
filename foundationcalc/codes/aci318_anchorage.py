@@ -9,7 +9,9 @@ group under tension and shear:
 - Combined tension + shear interaction (17.8.3): (Nu/phiNn)^5/3 + (Vu/phiVn)^5/3 ≤ 1.
 
 Units: N, mm, MPa (consistent SI).
-phi_steel = 0.75 (ductile), phi_concrete = 0.65 (Cap. 17).
+phi_steel = 0.75 in tension and 0.65 in shear (ductile, Table 17.5.3),
+phi_concrete = 0.65 for every concrete mode (Table 17.5.3 differentiates by
+anchor type and Condition A/B; not differentiated here).
 
 Theory: docs/theory/aci318_anchorage.md (planned).
 """
@@ -22,7 +24,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-PHI_STEEL = 0.75
+PHI_STEEL = 0.75        # ductile steel element, tension (ACI 318-19 Table 17.5.3)
+PHI_STEEL_SHEAR = 0.65  # ductile steel element, shear (ACI 318-19 Table 17.5.3)
 PHI_CONCRETE = 0.65
 
 
@@ -216,13 +219,11 @@ def shear_capacity(
     than a silent gap — but nothing in the signature enforces that, and a
     caller passing post-installed properties gets the case-(b) number back.
 
-    **Unverified — phi for steel in shear.** This module applies
-    PHI_STEEL = 0.75 to both tension and shear.
-    ``fastsap.codes.anchorage`` uses 0.65 for steel in shear and 0.75 for
-    tension. Which is right per Table 17.5.3 has not been verified against
-    the printed standard. If 0.65 is correct, the phi_Vn returned here is
-    unconservative by 0.75/0.65 ≈ 1.15. This is a real disagreement between
-    two modules in this repository, not resolved here.
+    **phi for steel in shear (corrected in 1.1.0).** Ductile steel in shear
+    takes phi = 0.65 (ACI 318-19 Table 17.5.3; the ICC-ES evaluation
+    reports issued under ACI 318-19 list 0.75 tension / 0.65 shear for
+    ductile steel). This function used 0.75 for both, so a steel-governed
+    phi_Vn was 0.75/0.65 = 1.15 times too high.
     """
     # Steel, §17.7.1.2 case (b): Vsa = 0.60·Ase_V·futa — cast-in headed bolt
     # or hooked bolt. NOT welded headed studs (case a, coefficient 1.0), and
@@ -243,7 +244,7 @@ def shear_capacity(
     Nb = 10.0 * math.sqrt(fc) * hef**1.5
     Vcp = kcp * Nb * n_anchors
 
-    Vn_steel = PHI_STEEL * Vsa
+    Vn_steel = PHI_STEEL_SHEAR * Vsa
     cand = {"steel": Vn_steel,
             "breakout": PHI_CONCRETE * Vcb,
             "pryout":   PHI_CONCRETE * Vcp}
@@ -276,5 +277,5 @@ __all__ = [
     "AnchorCondition",
     "AnchorTensionResult", "AnchorShearResult", "AnchorInteractionResult",
     "tension_capacity", "shear_capacity", "interaction",
-    "PHI_STEEL", "PHI_CONCRETE",
+    "PHI_STEEL", "PHI_STEEL_SHEAR", "PHI_CONCRETE",
 ]

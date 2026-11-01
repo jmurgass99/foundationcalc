@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "foundationcalc"
-version = "1.0.0"
-description = "Foundation design to EN 1997-1, EN 1998-5, ACI 318 and NSR-10: bearing capacity and settlement, isolated, combined and strap footings, mat foundations (Winkler), pile capacity and pile groups, pile caps, retaining, basement, counterfort, MSE and diaphragm walls, punching shear, reinforcement and PDF reports."
+version = "1.1.0"
+description = "Foundation design in Python to EN 1997-1, EN 1992-1-1, EN 1998-5 and ACI 318: EN 1997-1 Annex D bearing capacity with partial factors, contact pressures, settlement and consolidation, CPT and SPT correlations, punching of column bases with control perimeters within 2d, footing flexure, combined and strap footings, pile caps, mats on Winkler springs, pile axial and lateral (p-y) capacity, pile groups, cantilever, basement, gravity, MSE, anchored and diaphragm walls, Mononobe-Okabe, Gazetas springs and an ETABS-to-SAFE foundation chain with a calculation report."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Jesús Murgas" }]
-keywords = ["foundation-design", "eurocode-7", "aci-318", "footings", "piles", "retaining-walls", "punching-shear", "geotechnical", "structural-engineering"]
+keywords = ["foundation-design", "geotechnical-engineering", "eurocode-7", "en-1997-1", "eurocode-2", "aci-318", "punching-shear", "bearing-capacity", "footings", "pile-foundations", "p-y-curves", "retaining-walls", "mat-foundation", "winkler", "soil-structure-interaction", "structural-engineering", "loadpath"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",

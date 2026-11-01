@@ -80,7 +80,15 @@ def punching_shear_check(
     d_eff_m: float,
     gamma_c: float = 1.5,
 ) -> PunchingShearResult:
-    """EC2 punching shear at 2·d or interior perimeter a < 2·d for compact footings.
+    """EC2 punching shear of a column base: control perimeters scanned at a ≤ 2·d.
+
+    EN 1992-1-1 §6.4.2(2) and §6.4.4(2): for column bases the soil reaction
+    inside the control perimeter is deducted (V_Ed,red = V_Ed − ΔV_Ed) and the
+    resistance is v_Rd = C_Rd,c·k·(100·ρ_l·f_ck)^(1/3)·2d/a ≥ v_min·2d/a
+    (ec. 6.50). The critical distance a is found by scanning 40 perimeters
+    between 0.1·d and 2·d (or the footing edge, for compact footings); the
+    result reports the governing one. The soil pressure is taken uniform
+    (N/A), i.e. without the moment.
 
     Args:
         foundation: footing geometry.
@@ -107,32 +115,49 @@ def punching_shear_check(
 
     beta = column.punching_beta(foundation)
 
-    # EC2 τ_Rd,c base
+    # EC2 τ_Rd,c base, con el mínimo v_min = 0.035·k^1.5·fck^0.5 de la
+    # ecuación (6.50) (antes faltaba: con cuantías bajas la resistencia salía
+    # por debajo del mínimo normativo, del lado conservador).
     xi = min(1.0 + math.sqrt(200.0 / (d * 1000.0)), 2.0)
     rho_l = min(math.sqrt(max(rho_x, 0.0) * max(rho_y, 0.0)), 0.02)
     tau_rd_MPa = (0.18 / gamma_c) * xi * (100.0 * rho_l * fck_MPa) ** (1.0 / 3.0)
+    v_min_MPa = 0.035 * xi ** 1.5 * math.sqrt(fck_MPa)
+    tau_rd_MPa = max(tau_rd_MPa, v_min_MPa)
     tau_rd_kPa = tau_rd_MPa * 1000.0  # MPa → kPa
 
     if A_u1 < A_footing:
-        # Zapata estándar: u1 a 2d queda contenida dentro de la zapata
-        F_sd = N_sd_kN * (A_footing - A_u1) / A_footing
-        F_sd = max(F_sd, 0.0)
-        F_sd_ef = beta * F_sd
-        # DEFECTO CORREGIDO: aqui habia `... if u1 * d > 0 else 0.0`. Con la
-        # guarda fallando, la tension ACTUANTE colapsaba a 0.0, la utilizacion
-        # salia 0 y el veredicto PASS: la geometria degenerada aprobaba el
-        # punzonamiento por no haberlo comprobado. Es tambien la razon de que
-        # el mutante `u1 * d > 0` -> `< 0` sobreviviera a toda la suite.
+        # Zapata estándar: u1 a 2d queda contenida dentro de la zapata.
+        #
+        # DEFECTO CORREGIDO (1.1.0): esta rama comprobaba SOLO el perímetro a
+        # 2d. En una base de pilar la reacción del terreno dentro del perímetro
+        # descuenta mucho, y EC2 §6.4.2(2) y §6.4.4(2) piden comprobar los
+        # perímetros a distancia a ≤ 2d con v_Rd·2d/a (ec. 6.50): el crítico
+        # suele estar hacia a ≈ d. Zapata de 3 × 3 m, d = 0,50 m, N = 800 kN:
+        # utilización 0,234 a 2d frente a 0,344 en a ≈ 0,5 m (+47 %). Ahora se
+        # barre a en (0,1d, 2d] igual que en la rama compacta y se publica el
+        # perímetro que gobierna.
         if u1 * d <= 0:
             raise ValueError(
                 f"perimetro de control degenerado: u1 = {u1:.6f} m, d = {d:.6f} m. "
                 f"Sin area de control no hay tension de punzonamiento que calcular."
             )
-        tau_sd = F_sd_ef / (u1 * d)
-        utilization = tau_sd / tau_rd_kPa if tau_rd_kPa > 0 else float("inf")
+        best = None
+        max_util = -1.0
+        for a_val in np.linspace(0.1 * d, 2.0 * d, 40):
+            u_a = 2.0 * (c1 + c2) + 2.0 * math.pi * a_val
+            A_u_a = c1 * c2 + 2.0 * (c1 + c2) * a_val + math.pi * a_val ** 2
+            F_sd_a = max(N_sd_kN * (A_footing - A_u_a) / A_footing, 0.0)
+            F_sd_ef_a = beta * F_sd_a
+            tau_sd_a = F_sd_ef_a / (u_a * d)
+            tau_rd_a = tau_rd_kPa * (2.0 * d) / a_val
+            util = tau_sd_a / tau_rd_a if tau_rd_a > 0 else float("inf")
+            if util > max_util:
+                max_util = util
+                best = (float(a_val), u_a, F_sd_a, F_sd_ef_a, tau_sd_a, tau_rd_a)
+        a_crit, u_crit, F_sd, F_sd_ef, tau_sd, tau_rd_scaled = best
 
         return PunchingShearResult(
-            u1=u1,
+            u1=u_crit,
             d_eff=d,
             F_sd=F_sd,
             F_sd_ef=F_sd_ef,
@@ -141,12 +166,12 @@ def punching_shear_check(
             beta=beta,
             xi=xi,
             rho_l=rho_l,
-            utilization=utilization,
+            utilization=max_util,
             applicable=True,
-            a_crit_m=2.0 * d,
-            u_crit_m=u1,
+            a_crit_m=a_crit,
+            u_crit_m=u_crit,
             is_compact=False,
-            tau_rd_scaled_kPa=tau_rd_kPa,
+            tau_rd_scaled_kPa=tau_rd_scaled,
         )
     else:
         # Zapata compacta (EC2 §6.4.4(2)): el perímetro a 2d excede la planta.

@@ -33,13 +33,16 @@ def test_drained_sliding_basic():
 
 
 def test_drained_sliding_precast_delta_factor():
-    """k = 2/3 — δ = arctan(2/3 · tanφ)."""
+    """k = 2/3 — δ_d = 2/3·φ'_d (EN 1997-1 §6.5.3(10)): 2/3·36° = 24°.
+
+    Antes de la 1.1.0 se aplicaba a la tangente, atan(2/3·tan 36°) = 25,85°.
+    """
     res = sliding_resistance_drained(
         N_Ed=300.0, soil=SAND, A_eff=2.0, H_Ed=50.0,
         delta_factor=2.0 / 3.0,
     )
-    expected_delta = math.degrees(math.atan(2.0 / 3.0 * math.tan(math.radians(36.0))))
-    assert res.delta_d_deg == pytest.approx(expected_delta, abs=1e-3)
+    assert res.delta_d_deg == pytest.approx(24.0, abs=1e-9)
+    assert res.H_Rd == pytest.approx(300.0 * math.tan(math.radians(24.0)), rel=1e-12)
 
 
 def test_undrained_sliding():

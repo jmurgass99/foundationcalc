@@ -105,14 +105,21 @@ class TestFoundationChain:
             d_eff_m=d_eff,
         )
 
-        # Perímetro crítico u1 = 2*(0.4+0.4) + 4*pi*0.55 = 1.6 + 6.9115 = 8.5115 m
-        assert res.u1 == pytest.approx(8.5115, rel=1e-3)
         # Resistencia a cortante de punzonamiento sin armadura tau_rd (kPa)
         # xi = 1 + sqrt(200/550) = 1.6030
         # tau_rd = 0.12 * 1.6030 * (100 * 0.005 * 30)^(1/3) * 1000 = 474.4 kPa
         assert res.tau_rd == pytest.approx(474.4, rel=1e-2)
+        # Base de pilar (EC2 §6.4.2(2), §6.4.4(2)): se barren perímetros a <= 2d
+        # con tau_Rd*2d/a. A 2d (u1 = 1.6 + 4*pi*0.55 = 8.5115 m) la utilización
+        # era < 0.10; el perímetro crítico está hacia a = 0.43 m:
+        #   u = 1.6 + 2*pi*0.430128 = 4.3026 m, A = 0.16 + 1.6*0.430128 + pi*0.430128^2
+        #   F = 800*(6.25 - A)/6.25 = 617.03 kN, tau = 1.15*617.03/(4.3026*0.55) = 299.86 kPa
+        #   tau_Rd(a) = 474.41*1.1/0.430128 = 1213.24 kPa -> eta = 0.2472
+        # (barrido fino independiente: 0.24717 en a = 0.425 m)
+        assert res.a_crit_m < 2 * d_eff
+        assert res.u1 == pytest.approx(4.3026, rel=1e-3)
+        assert res.utilization == pytest.approx(0.24717, rel=1e-3)
         assert res.is_ok is True
-        assert res.utilization < 0.10
 
     def test_foundation_chain_complete_mock(self) -> None:
         """Verifica la cadena completa desde reacciones fixture hasta spec SAFE."""
@@ -238,7 +245,8 @@ class TestPunchingApplicability:
         assert res.applicable is True
         assert res.is_compact is False
         assert res.verdict == "PASS"
-        assert res.u1 == pytest.approx(8.5115, rel=1e-3)
+        # Gobierna un perímetro interior a < 2d (a = 0.43 m, u = 4.3026 m).
+        assert res.u1 == pytest.approx(4.3026, rel=1e-3)
 
     def test_memoria_reports_compact_footing_punching(self) -> None:
         """La memoria de la cadena reporta el chequeo EC2 6.4.4(2) para el caso compacto."""

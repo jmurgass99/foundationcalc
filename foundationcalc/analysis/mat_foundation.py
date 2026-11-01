@@ -1,10 +1,11 @@
 """Mat / raft foundation analysis on Winkler springs (2D FEM).
 
 The mat slab is discretised with 4-node Mindlin-Reissner plate elements
-(Q4) with selective reduced integration (2x2 Gauss for bending, 1x1 for
-shear) to avoid locking. The soil is modelled with distributed Winkler
-springs `k_s` (kN/m^3) lumped at the nodes via the consistent matrix
-`k_s · integral N^T N dA`.
+(Q4): 2x2 Gauss for bending and MITC4 assumed transverse shear strains
+(Bathe & Dvorkin 1985), which avoids both shear locking and the spurious
+zero-energy (checkerboard) mode of one-point shear integration. The soil is
+modelled with Winkler springs `k_s` (kN/m^3) lumped at the nodes
+(`k_s · A_e/4` per element node).
 
 Theory: docs/theory/01_introduction.md (mat foundations) +
         Hetenyi "Beams on Elastic Foundation" (1946) extended to 2D.
@@ -85,19 +86,40 @@ def _element_stiffness_plate(
             B_b[2, 3 * i + 2] =  dN_xy[1, i]
         K_e += B_b.T @ D_b @ B_b * detJ * w_gp
 
-    # --- Shear: 1x1 reduced integration ---
-    N, dN_local = _shape_q4(0.0, 0.0)
-    J = dN_local @ coords
-    detJ = np.linalg.det(J)
-    dN_xy = np.linalg.solve(J, dN_local)
+    # --- Shear: MITC4 assumed transverse shear strains ---
+    # γ_xz is sampled at the mid-points of the edges η = ±1 and interpolated
+    # linearly in η; γ_yz at the mid-points of ξ = ±1, linearly in ξ (Bathe &
+    # Dvorkin 1985). Written for the rectangular, axis-aligned elements that
+    # `_build_mesh` generates (ξ ∥ x, η ∥ y).
+    #
+    # DEFECTO CORREGIDO (1.1.0): la cortante se integraba con UN punto. El Q4
+    # de Mindlin así integrado tiene un modo espurio de energía nula
+    # (desplazamiento en damero con giros nulos) que solo los muelles frenan:
+    # una carga de pilar lo excitaba y la losa daba asientos alternos entre
+    # nudos vecinos (h = 3 m: 0,86 / 0,01 mm) y, a una longitud
+    # característica de la carga, un 9-13 % menos que la solución de placa
+    # infinita sobre Winkler de Hetényi. Con MITC4 la diferencia es < 0,5 %.
+    def _B_s_at(xi_t: float, eta_t: float) -> np.ndarray:
+        Nt, dNt = _shape_q4(xi_t, eta_t)
+        Jt = dNt @ coords
+        dNt_xy = np.linalg.solve(Jt, dNt)
+        Bt = np.zeros((2, 12))
+        for i in range(4):
+            Bt[0, 3 * i + 0] = dNt_xy[0, i]
+            Bt[0, 3 * i + 2] = Nt[i]
+            Bt[1, 3 * i + 0] = dNt_xy[1, i]
+            Bt[1, 3 * i + 1] = -Nt[i]
+        return Bt
 
-    B_s = np.zeros((2, 12))
-    for i in range(4):
-        B_s[0, 3 * i + 0] = dN_xy[0, i]
-        B_s[0, 3 * i + 2] = N[i]
-        B_s[1, 3 * i + 0] = dN_xy[1, i]
-        B_s[1, 3 * i + 1] = -N[i]
-    K_e += B_s.T @ (D_s_scalar * np.eye(2)) @ B_s * detJ * 4.0  # weight = 4
+    B_top, B_bot = _B_s_at(0.0, 1.0), _B_s_at(0.0, -1.0)      # γ_xz tying points
+    B_right, B_left = _B_s_at(1.0, 0.0), _B_s_at(-1.0, 0.0)   # γ_yz tying points
+    for (xi, eta), w_gp in zip(_GP2, _GW2):
+        _, dN_local = _shape_q4(xi, eta)
+        detJ = np.linalg.det(dN_local @ coords)
+        B_s = np.zeros((2, 12))
+        B_s[0] = 0.5 * (1.0 + eta) * B_top[0] + 0.5 * (1.0 - eta) * B_bot[0]
+        B_s[1] = 0.5 * (1.0 + xi) * B_right[1] + 0.5 * (1.0 - xi) * B_left[1]
+        K_e += B_s.T @ (D_s_scalar * np.eye(2)) @ B_s * detJ * w_gp
 
     return K_e
 

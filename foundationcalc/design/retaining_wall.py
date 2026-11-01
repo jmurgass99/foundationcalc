@@ -40,6 +40,8 @@ from ..analysis.bearing_capacity import (
     undrained_bearing_capacity,
 )
 from ..analysis.earth_pressure import (
+    Ka_coulomb,
+    Ka_rankine_inclined,
     active_thrust,
     at_rest_thrust,
     passive_thrust,
@@ -275,55 +277,66 @@ class CantileverWallDesigner:
         """Height of the virtual vertical plane behind the wall (back of heel)."""
         return self.geo.H + self.geo.base_thickness
 
-    def _active_thrust(self) -> Tuple[float, float, float]:
-        """(P_h, P_v, lever_arm_about_toe_for_P_h).
+    def _active_thrust_parts(self, gamma_phi: float = 1.0, gamma_c: float = 1.0) -> dict:
+        """Characteristic active thrust split into earth and surcharge parts.
 
         Routes to either:
-        - **Rankine on the virtual back**: thrust acts parallel to the
-          backfill slope (δ_virtual = α). For α = 0 the thrust is purely
-          horizontal.
+        - **Rankine on the virtual back**: K_a of Rankine for a backfill
+          inclined α (`Ka_rankine_inclined`), thrust parallel to the slope.
+          For α = 0 the thrust is purely horizontal.
         - **Coulomb on the actual stem back**: thrust inclined at δ_w
-          from the back-face normal. The vertical component is added to
-          the stabilising weight.
+          from the back-face normal.
+        The vertical components are added to the stabilising forces.
+
+        The surcharge part is a VARIABLE action and is returned separately so
+        that it can take γ_Q (EN 1990); the earth part takes γ_G.
+
+        DEFECTO CORREGIDO (1.1.0): la rama Rankine prometía «K_a from the
+        slope-corrected formula» pero llamaba a `active_thrust` con
+        `use_coulomb=False`, que ignora α: con φ = 30° y α = 20° usaba
+        K_a = 0,333 en vez de 0,414 (−20 % de empuje). Y el empuje de la
+        sobrecarga se mayoraba con γ_G como si fuera permanente.
         """
         import math
         H_v = self._virtual_back_height()
-        phi = self.load.backfill.friction_angle
+        # Design strength of the backfill (set M of the design approach):
+        # tan φ_d = tan φ_k/γ_φ, c_d = c_k/γ_c (EN 1997-1 §2.4.6.2).
+        phi = math.degrees(math.atan(math.tan(math.radians(self.load.backfill.friction_angle)) / gamma_phi))
         gamma = self.load.backfill.unit_weight
         alpha = self.load.backfill_slope_deg
+        c = self.load.backfill.cohesion / gamma_c
+        q = self.load.surcharge_q
 
         if self.load.analysis_method == "rankine_virtual_back":
-            # Rankine on the virtual back: K_a from the slope-corrected formula
-            # and the thrust is parallel to the slope (δ_virtual = α).
-            res = active_thrust(
-                H=H_v, gamma=gamma, phi_deg=phi,
-                c_prime=self.load.backfill.cohesion,
-                surcharge_q=self.load.surcharge_q,
-                use_coulomb=False,
-                delta_deg=0.0, beta_deg=90.0, alpha_deg=alpha,
-            )
-            alpha_rad = math.radians(alpha)
-            P_total = res.thrust_P
-            # When sloping: project onto horizontal/vertical
-            P_h = P_total * math.cos(alpha_rad)
-            P_v = P_total * math.sin(alpha_rad)  # downward, helps stability
-            return P_h, P_v, res.point_of_application_z
+            K = Ka_rankine_inclined(phi, alpha)
+            incl = math.radians(alpha)          # thrust parallel to the slope
+        else:
+            delta = phi * self.load.delta_over_phi
+            K = Ka_coulomb(phi, delta, 90.0, alpha)
+            incl = math.radians(delta)          # δ_w from the back-face normal
 
-        # Coulomb on the actual stem back
-        delta = phi * self.load.delta_over_phi
-        res = active_thrust(
-            H=H_v, gamma=gamma, phi_deg=phi,
-            c_prime=self.load.backfill.cohesion,
-            surcharge_q=self.load.surcharge_q,
-            use_coulomb=True,
-            delta_deg=delta, beta_deg=90.0, alpha_deg=alpha,
-        )
-        delta_rad = math.radians(delta)
-        # res.thrust_P is the total magnitude when use_coulomb=True.
-        # Components on horizontal and vertical:
-        P_h = res.thrust_P * math.cos(delta_rad)
-        P_v = res.thrust_P * math.sin(delta_rad)
-        return P_h, P_v, res.point_of_application_z
+        P_earth = 0.5 * K * gamma * H_v ** 2
+        P_coh = -2.0 * c * math.sqrt(max(K, 1e-12)) * H_v
+        P_earth = P_earth + max(P_coh, -P_earth)   # same clamp as active_thrust
+        P_surch = K * q * H_v
+        return {
+            "K": K,
+            "P_h_earth": P_earth * math.cos(incl),
+            "P_v_earth": P_earth * math.sin(incl),
+            "z_earth": H_v / 3.0,
+            "P_h_surch": P_surch * math.cos(incl),
+            "P_v_surch": P_surch * math.sin(incl),
+            "z_surch": H_v / 2.0,
+        }
+
+    def _active_thrust(self) -> Tuple[float, float, float]:
+        """(P_h, P_v, lever_arm_above_base_for_P_h), characteristic totals."""
+        p = self._active_thrust_parts()
+        P_h = p["P_h_earth"] + p["P_h_surch"]
+        P_v = p["P_v_earth"] + p["P_v_surch"]
+        M = p["P_h_earth"] * p["z_earth"] + p["P_h_surch"] * p["z_surch"]
+        z = M / P_h if P_h > 0 else 0.0
+        return P_h, P_v, z
 
     def _water_thrust(self) -> Tuple[float, float]:
         """(P_w, lever_arm_about_toe)."""
@@ -366,18 +379,19 @@ class CantileverWallDesigner:
             M_stb += W_d * lever
             components.append((name, W_d, 0.0, lever))
 
-        # Active thrust (destabilising) on the virtual back
-        P_h, P_v, z_P = self._active_thrust()
-        # γG_unfav on earth thrust (the soil weight is a permanent load)
-        P_h_d = gG_unfav * P_h
-        P_v_d = gG_unfav * P_v
+        # Active thrust (destabilising) on the virtual back: γG_unfav on the
+        # earth part (permanent), γQ on the surcharge part (variable).
+        tp = self._active_thrust_parts(pf.soil.gamma_phi, pf.soil.gamma_c)
+        P_h_d = gG_unfav * tp["P_h_earth"] + gQ * tp["P_h_surch"]
+        P_v_d = gG_unfav * tp["P_v_earth"] + gQ * tp["P_v_surch"]
         # P_v acts downward on the heel — adds to stabilising V, M_stb
         V_stb_extra = P_v_d
         M_stb += P_v_d * self.geo.x_back_of_heel
         components.append(("active_Pv", P_v_d, 0.0, self.geo.x_back_of_heel))
-        # P_h lever is z above base bottom
-        z_P_above_base = z_P  # already measured from base bottom (full virtual height)
-        M_dst = P_h_d * z_P_above_base
+        # Lever arms measured from the base bottom (full virtual height)
+        M_dst = (gG_unfav * tp["P_h_earth"] * tp["z_earth"]
+                 + gQ * tp["P_h_surch"] * tp["z_surch"])
+        z_P_above_base = M_dst / P_h_d if P_h_d > 0 else 0.0
         components.append(("active_Ph", 0.0, P_h_d, z_P_above_base))
 
         # Water thrust (γG_unfav)
@@ -405,11 +419,13 @@ class CantileverWallDesigner:
     # ------------------------------------------------ structural critical sections
     def _structural_forces(self, actions: WallActionResult) -> dict:
         """Bending moments and shears at the three critical sections."""
+        import math
         g = self.geo
-        phi = self.load.backfill.friction_angle
+        pf = get_partial_factors(self.da, LimitState.STR)
+        phi = math.degrees(math.atan(math.tan(math.radians(self.load.backfill.friction_angle))
+                                     / pf.soil.gamma_phi))
         gamma = self.load.backfill.unit_weight
         delta = phi * self.load.delta_over_phi if self.load.use_coulomb else 0.0
-        pf = get_partial_factors(self.da, LimitState.STR)
         gG = pf.actions.gamma_G_unfav
         gQ = pf.actions.gamma_Q_unfav
 
@@ -420,7 +436,7 @@ class CantileverWallDesigner:
             H=H_stem,
             gamma=gamma,
             phi_deg=phi,
-            c_prime=self.load.backfill.cohesion,
+            c_prime=self.load.backfill.cohesion / pf.soil.gamma_c,
             surcharge_q=self.load.surcharge_q,
             use_coulomb=self.load.use_coulomb,
             delta_deg=delta,
@@ -441,58 +457,57 @@ class CantileverWallDesigner:
             + gQ * Ka * self.load.surcharge_q * H_stem
         )
 
-        # --- HEEL: net upward soil reaction minus downward backfill+self-weight ---
-        # Approximate the soil reaction at the heel end (q_min) and at the
-        # stem face (q_at_stem) using linear distribution under V_d/B with e_x.
+        # --- HEEL and TOE: soil reaction under the base -----------------
+        # x is measured from the toe and e_x = B/2 − x_R, so e_x > 0 means
+        # the resultant lies towards the TOE (the usual case). Linear
+        # (Navier) distribution inside the core, triangular over
+        # a' = 3·(B/2 − |e|) from the loaded edge outside it.
+        #
+        # DEFECTO CORREGIDO (1.1.0): la presión en las caras de talón y
+        # puntera se interpolaba con q_avg·(1 + 36·e·(x − B/2)/B²): factor 3
+        # de más y signo cambiado (la presión subía hacia el talón cuando la
+        # resultante iba hacia la puntera). Fuera del núcleo se tomaba
+        # q_peak/2 en las dos caras y el pico se ponía en el borde contrario
+        # al de la resultante. Ahora se integra la distribución real.
         V = actions.V_d
         B = g.B
         e = actions.e_x
-        q_avg = V / B
-        if abs(e) <= B / 6.0:
-            q_max = q_avg * (1.0 + 6.0 * e / B)
-            q_min = q_avg * (1.0 - 6.0 * e / B)
-        else:
-            # Triangular distribution: only a' = 3*(B/2 - |e|) is active
+
+        def q_soil(x: float) -> float:
+            if abs(e) <= B / 6.0 + 1e-12:
+                return V / B * (1.0 + 12.0 * e * (B / 2.0 - x) / B ** 2)
             a_prime = max(3.0 * (B / 2.0 - abs(e)), 1e-6)
-            q_peak = 2.0 * V / a_prime
-            # By sign of e: if e > 0 (towards heel), peak at heel
-            if e > 0:
-                q_max, q_min = q_peak, 0.0
-            else:
-                q_max, q_min = 0.0, q_peak  # peak at toe
-        # By convention e > 0 means resultant towards heel (large M_stab)
-        # Heel section is at x = toe + stem_bottom from the toe
-        x_heel = g.toe + g.stem_bottom
-        # Linear interpolation of q_soil at x_heel:
-        if abs(e) <= B / 6.0:
-            q_at_heel_face = q_avg * (1.0 + 6.0 * e * (x_heel - B / 2.0) / (B ** 2 / 6.0))
-        else:
-            q_at_heel_face = max(q_min, q_max) * 0.5
+            dist = x if e > 0 else (B - x)      # from the loaded edge
+            return max(2.0 * V / a_prime * (1.0 - dist / a_prime), 0.0)
+
         # Downward loads over the heel: self-weight slab + backfill + surcharge
         gc = self.concrete.unit_weight
-        w_slab = gc * g.base_thickness                   # kN/m of heel slab area (per m run × m)
-        w_fill = gamma * g.H                             # kN/m
+        w_slab = gc * g.base_thickness                   # kN/m² of heel
+        w_fill = gamma * g.H                             # kN/m²
         w_surch = self.load.surcharge_q
         w_down = gG * w_slab + gG * w_fill + gQ * w_surch
-        # Net upward per metre run of heel x B... approximate with trapezoidal q
-        q_heel_avg = 0.5 * (q_at_heel_face + q_min if e > 0 else q_max)
-        net_up = q_heel_avg - w_down
-        # Heel moment about stem face (per m run)
-        # Approximate by treating net as uniform over heel length
-        M_heel = net_up * g.heel ** 2 / 2.0
-        V_heel = net_up * g.heel
+        n_int = 400
+        x_heel = g.toe + g.stem_bottom
+        M_heel = 0.0
+        V_heel = 0.0
+        if g.heel > 0:
+            dx = g.heel / n_int
+            for i in range(n_int):
+                x = x_heel + (i + 0.5) * dx
+                net_down = w_down - q_soil(x)
+                V_heel += net_down * dx
+                M_heel += net_down * dx * (x - x_heel)
 
-        # --- TOE: similar, but soil reaction acts up and dominates -----
-        # Upward q at toe edge and at stem face
-        if abs(e) <= B / 6.0:
-            q_at_toe_face = q_avg * (1.0 + 6.0 * e * (g.toe - B / 2.0) / (B ** 2 / 6.0))
-        else:
-            q_at_toe_face = max(q_min, q_max) * 0.5
         w_down_toe = gG * gc * g.base_thickness + gG * gamma * g.embedment_front
-        # Use the q value at the wall face (toe-end) — conservative
-        net_up_toe = max(q_at_toe_face, q_max) - w_down_toe
-        M_toe = net_up_toe * g.toe ** 2 / 2.0
-        V_toe = net_up_toe * g.toe
+        M_toe = 0.0
+        V_toe = 0.0
+        if g.toe > 0:
+            dx = g.toe / n_int
+            for i in range(n_int):
+                x = (i + 0.5) * dx
+                net_up = q_soil(x) - w_down_toe
+                V_toe += net_up * dx
+                M_toe += net_up * dx * (g.toe - x)
 
         return {
             "M_stem_base": M_stem_base,
@@ -548,9 +563,14 @@ class CantileverWallDesigner:
         bearing_util = q_Ed / max(q_Rd, 1e-6)
 
         # --- Sliding -------------------------------------------------
+        # DEFECTO CORREGIDO (1.1.0): se dividía el ÁNGULO por γ_φ
+        # (tan(φ/γ_φ)) en vez de la tangente (tan φ_d = tan φ / γ_φ, EN 1997-1
+        # §2.4.6.2), y la resistencia pasiva buscaba un atributo inexistente
+        # (`gamma_R_e`) y caía siempre en 1/1,4 aunque el enfoque fuera DA1
+        # (γ_R;e = 1,0).
         import math
-        phi_b = math.radians(self.load.foundation_soil.friction_angle) / pf.soil.gamma_phi
-        tan_phi_b_d = math.tan(phi_b)
+        tan_phi_b_d = (math.tan(math.radians(self.load.foundation_soil.friction_angle))
+                       / pf.soil.gamma_phi)
         R_friction = actions.V_d * tan_phi_b_d
         R_cohesion = (
             self.load.foundation_soil.cohesion / pf.soil.gamma_c
@@ -558,20 +578,33 @@ class CantileverWallDesigner:
         R_passive = 0.0
         if self.include_passive:
             P_p, _ = self._passive_thrust_front()
-            R_passive = P_p / pf.resistance.gamma_R_e if hasattr(pf.resistance, "gamma_R_e") else P_p / 1.4
+            R_passive = P_p / pf.resistance.gamma_Re
         H_Rd = (R_friction + R_cohesion) / pf.resistance.gamma_Rh + R_passive
         sliding_util = actions.H_d / max(H_Rd, 1e-6)
 
         # --- Overturning (EQU) ----------------------------------------
+        # From CHARACTERISTIC values with the EQU set (EN 1997-1 Table A.1):
+        # γ_G,dst on earth and water thrust, γ_Q,dst on the surcharge thrust,
+        # γ_G,stb on the weights and on the vertical earth component; the
+        # surcharge on the heel is a favourable variable action and is left out.
+        #
+        # DEFECTO CORREGIDO (1.1.0): se multiplicaban por los coeficientes EQU
+        # los componentes YA mayorados con los de GEO (doble mayoración del
+        # empuje: 1,35 × 1,10) y la sobrecarga sobre el talón contaba como
+        # estabilizadora con 1,5 × 0,9.
         pf_equ = get_partial_factors(self.da, LimitState.EQU)
-        # Recompute with EQU factors quickly using the same components
-        equ_M_dst = 0.0
-        equ_M_stb = 0.0
-        for name, F_v, F_h, lever in actions.qty_components:
-            if F_h > 0:
-                equ_M_dst += F_h * lever * (pf_equ.actions.gamma_Q_unfav if name == "water" else pf_equ.actions.gamma_G_unfav)
-            else:
-                equ_M_stb += F_v * lever * pf_equ.actions.gamma_G_fav
+        gG_dst = pf_equ.actions.gamma_G_unfav
+        gG_stb = pf_equ.actions.gamma_G_fav
+        gQ_dst = pf_equ.actions.gamma_Q_unfav
+        tp = self._active_thrust_parts(pf_equ.soil.gamma_phi, pf_equ.soil.gamma_c)
+        P_w_k, z_w = self._water_thrust()
+        equ_M_dst = (gG_dst * (tp["P_h_earth"] * tp["z_earth"] + P_w_k * z_w)
+                     + gQ_dst * tp["P_h_surch"] * tp["z_surch"])
+        equ_M_stb = gG_stb * (
+            sum(W * x for name, W, x in self._self_weight_components()
+                if name != "surcharge_heel")
+            + tp["P_v_earth"] * self.geo.x_back_of_heel
+        )
         overturn_util = equ_M_dst / max(equ_M_stb, 1e-6)
 
         # --- Structural critical sections -----------------------------

@@ -11,6 +11,7 @@ except ImportError as exc:
         "fastapi requerido: pip install foundationcalc[api]"
     ) from exc
 
+from .. import __version__ as _VERSION
 from .._brand import NAME as _BRAND_NAME
 
 
@@ -32,7 +33,7 @@ def root():
     }
 
 
-@router.post("/api/footings/isolated", summary="Dimensionamiento geotécnico y estructural de zapatas aisladas según Eurocódigo 7 / EC2")
+@router.post("/api/footings/isolated", summary="Zapata aislada: presión de contacto (núcleo y despegue), punzonamiento y flexión según ACI 318-19 frente a una tensión admisible (no es una comprobación EN 1997-1)")
 def api_isolated_footing(inp: dict):
     from ..services import footings
     try:
@@ -50,7 +51,7 @@ def api_isolated_footing(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/walls/cantilever", summary="Estabilidad y armado de muros de contención en ménsula según Eurocódigo 7")
+@router.post("/api/walls/cantilever", summary="Predimensionado de muro en ménsula con factores de seguridad globales (Rankine); no evalúa la capacidad portante (bearing_FS = null)")
 def api_cantilever_wall(inp: dict):
     from ..services import walls
     try:
@@ -66,7 +67,7 @@ def api_cantilever_wall(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/piles/axial", summary="Capacidad portante axil de pilotes individuales (punta + fuste) según Eurocódigo 7")
+@router.post("/api/piles/axial", summary="Pilote en suelo cohesivo: fuste por método α (α = 0,5) y punta 9·c_u, admisible con FS = 3 (no es EN 1997-1)")
 def api_pile_axial(inp: dict):
     from ..services import piles
     try:
@@ -87,7 +88,7 @@ def api_pile_axial(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/bearing/multilayer", summary="Capacidad de carga de cimentaciones sobre suelos estratificados multicapa")
+@router.post("/api/bearing/multilayer", summary="Capacidad portante de Vesić en el estrato de apoyo con FS global (servicio deprecado: no combina estratos)")
 def api_bearing(inp: dict):
     from ..services import bearing
     try:
@@ -107,7 +108,7 @@ def api_bearing(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/seismic/mononobe_okabe", summary="Empuje sísmico dinámico de tierras según método de Mononobe-Okabe (EC8 Parte 5)")
+@router.post("/api/seismic/mononobe_okabe", summary="Empuje sísmico activo de Mononobe-Okabe (EN 1998-5 Anexo E)")
 def api_mo(inp: dict):
     from ..services import seismic
     try:
@@ -154,7 +155,7 @@ async def _lifespan(app: FastAPI):
             _job_queue.shutdown(wait=True)
 
 
-app = FastAPI(title=f"{_BRAND_NAME} API", version="0.1.0", lifespan=_lifespan)
+app = FastAPI(title=f"{_BRAND_NAME} API", version=_VERSION, lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"],
     allow_credentials=True, allow_methods=["*"], allow_headers=["*"],

@@ -150,14 +150,21 @@ class MSEWallDesigner:
         x_W = B / 2.0                              # centroid at midspan
         W_d_fav = gG_fav * W_k
 
-        # Active thrust from the soil behind the reinforced block (no δ)
-        Ka = Ka_rankine(self.load.phi_fill_deg)
-        P_h_k = 0.5 * Ka * gamma * H ** 2 + Ka * self.load.surcharge_q * H
+        # Active thrust from the soil behind the reinforced block (no δ),
+        # with the design friction angle of set M (tan φ_d = tan φ_k/γ_φ).
+        # DEFECTO CORREGIDO (1.1.0): usaba φ_k en todos los enfoques y
+        # mayoraba la sobrecarga (acción variable) con γ_G en vez de γ_Q.
+        gQ = pf.actions.gamma_Q_unfav
+        phi_fill_d_deg = math.degrees(math.atan(
+            math.tan(math.radians(self.load.phi_fill_deg)) / pf.soil.gamma_phi))
+        Ka = Ka_rankine(phi_fill_d_deg)
+        P_soil_k = 0.5 * Ka * gamma * H ** 2
+        P_surch_k = Ka * self.load.surcharge_q * H
+        P_h_k = P_soil_k + P_surch_k
+        P_h_d = gG_unfav * P_soil_k + gQ * P_surch_k
         z_arm = (
-            (0.5 * Ka * gamma * H ** 2) * (H / 3.0)
-            + Ka * self.load.surcharge_q * H * (H / 2.0)
-        ) / max(P_h_k, 1e-9)
-        P_h_d = gG_unfav * P_h_k
+            gG_unfav * P_soil_k * (H / 3.0) + gQ * P_surch_k * (H / 2.0)
+        ) / max(P_h_d, 1e-9)
 
         # Resultant on the base
         M_stb = W_d_fav * x_W

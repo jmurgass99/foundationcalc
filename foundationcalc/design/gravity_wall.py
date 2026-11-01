@@ -18,7 +18,8 @@ Implemented checks (per EN 1997-1 §9 + Bowles 2001 §14):
    back face by default — typical gravity-wall layout).
 3. **Sliding** along the base using the wall-soil interface friction
    `δ_b` (NOT the soil internal angle).
-4. **Overturning** about the toe (EQU).
+4. **Overturning** about the toe — ratio M_dst/M_stb with the GEO
+   factors of the design approach (not the EQU set of EN 1997-1 A.2).
 5. **Middle-third** for the resultant on the base.
 6. **Bearing capacity** of the foundation soil with **load-inclination
    factors** (Hansen / Vesic).
@@ -307,7 +308,12 @@ class GravityWallDesigner:
         W_k = W_total  # backwards-compatible alias
 
         # ---- 2) Coulomb active thrust on the back face ----
-        phi = self.load.backfill.friction_angle
+        # Design strength of the backfill (set M of the design approach):
+        # tan φ_d = tan φ_k / γ_φ (EN 1997-1 §2.4.6.2). DEFECTO CORREGIDO
+        # (1.1.0): el empuje se calculaba con φ_k en todos los enfoques, de
+        # modo que DA1-C2 y DA3 (M2, γ_φ = 1,25) no mayoraban el empuje.
+        phi = math.degrees(math.atan(
+            math.tan(math.radians(self.load.backfill.friction_angle)) / pf.soil.gamma_phi))
         gamma_f = self.load.backfill.unit_weight
         delta_w = phi * self.delta_w_ratio
         beta_back = 90.0 + self.geo.back_batter_deg   # 90 = vertical
@@ -337,6 +343,8 @@ class GravityWallDesigner:
         theta = math.radians(beta_back + delta_w - 90.0)
         P_h_k = P_a_total * math.cos(theta)
         P_v_k = P_a_total * math.sin(theta)   # downward, helps stability
+        P_h_soil_k = P_a_soil * math.cos(theta)
+        P_h_surch_k = P_a_surch * math.cos(theta)
 
         # ---- 3) Water thrust (hydrostatic, fully drained back not assumed) ----
         H_w = self.load.water_height
@@ -344,15 +352,19 @@ class GravityWallDesigner:
         z_w = H_w / 3.0
 
         # ---- 4) Factored actions ----
+        # The surcharge thrust is a VARIABLE action: γ_Q, not γ_G (EN 1990
+        # Tabla A1.2; corregido en 1.1.0, antes iba con γ_G).
+        gQ = pf.actions.gamma_Q_unfav
         W_d_fav = gG_fav * W_k
         P_v_d_fav = gG_fav * P_v_k                       # P_v is favourable
-        P_h_d = gG_unfav * P_h_k
+        P_h_d = gG_unfav * P_h_soil_k + gQ * P_h_surch_k
         P_w_d = gG_unfav * P_w_k
 
         # ---- 5) Lever arms (about toe) ----
         x_back = self.geo.back_face_x_at_y_zero_m
         M_stb = W_d_fav * x_W + P_v_d_fav * x_back
-        M_dst = P_h_d * z_a + P_w_d * z_w
+        M_dst = (gG_unfav * P_h_soil_k * (H_back / 3.0)
+                 + gQ * P_h_surch_k * (H_back / 2.0) + P_w_d * z_w)
 
         V_d = W_d_fav + P_v_d_fav
         H_d = P_h_d + P_w_d

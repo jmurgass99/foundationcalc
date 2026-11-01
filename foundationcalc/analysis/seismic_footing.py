@@ -225,6 +225,11 @@ def seismic_footing_check(
                 ),
                 factor=1.0,
             ),
+            # Inercia del bloque: solo su momento en la base, H_in·t/2.
+            # DEFECTO CORREGIDO (1.1.0): aquí iban a la vez mx = H_in·t/2 y
+            # vy = H_in, y BasePressureAnalysis suma vy·t, con lo que el
+            # brazo de la inercia del bloque salía 1,5·t en vez de t/2 y la
+            # excentricidad usada en el área eficaz no cuadraba con M_d.
             CombinationEntry(
                 load=PointLoad(
                     name="block_inertia",
@@ -232,7 +237,7 @@ def seismic_footing_check(
                     mx=H_inertia * (t / 2.0),  # extra moment from block inertia
                     my=0.0,
                     vx=0.0,
-                    vy=H_inertia,
+                    vy=0.0,
                 ),
                 factor=1.0,
             ),

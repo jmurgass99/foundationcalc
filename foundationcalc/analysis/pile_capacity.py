@@ -121,11 +121,14 @@ def pile_axial_capacity(
         if z_top >= tip_depth_m:
             break
 
-    # EC7 §7.6.2.3(8): apply ξ on the TOTAL calculated resistance, not on each
-    # component independently. We pass the calculated R_b and R_s through the
-    # combination ξ = min(ξ_3, ξ_4) applied to R_calc = R_b + R_s, then split
-    # back into base/shaft proportionally for partial-factor application.
-    xi = min(xi3, xi4)
+    # EC7 §7.6.2.3(5)P, ec. (7.8): R_c;k = min{(R_c;cal)_mean/ξ3 ; (R_c;cal)_min/ξ4}.
+    # With a single calculated profile mean = min = R_calc, so the governing
+    # quotient is the one with the LARGER ξ. The total is then split back into
+    # base/shaft proportionally for the partial factors (§7.6.2.3(8)).
+    #
+    # DEFECTO CORREGIDO (1.1.0): se usaba ξ = min(ξ3, ξ4), que da el MAYOR de
+    # los dos cocientes. Con ξ3 = 1.35 y ξ4 = 1.27, R_c;k salía un 6.3 % alto.
+    xi = max(xi3, xi4)
     R_calc_total = R_b + R_s
     R_ck = R_calc_total / xi
     R_bk = R_ck * (R_b / R_calc_total) if R_calc_total > 0 else 0.0

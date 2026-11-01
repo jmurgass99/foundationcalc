@@ -243,23 +243,21 @@ class CPTProfile(BaseModel):
         return self
 
     def total_stress_kPa(self, depth: float) -> float:
-        """Total vertical stress σ_v0 at `depth` (linear soil column above)."""
-        sigma = 0.0
-        prev_z = 0.0
-        for r in self.readings:
-            if r.depth >= depth:
-                if depth > prev_z:
-                    gamma = (self.gamma_above_wt_kN_m3
-                             if prev_z >= self.water_table_depth_m
-                             else self.gamma_above_wt_kN_m3)
-                    sigma += gamma * (depth - prev_z)
-                return sigma
-            gamma = (self.gamma_above_wt_kN_m3
-                     if r.depth <= self.water_table_depth_m
-                     else self.gamma_below_wt_kN_m3)
-            sigma += gamma * (r.depth - prev_z)
-            prev_z = r.depth
-        return sigma
+        """Total vertical stress σ_v0 at `depth`: γ_above above the water table, γ_below under it.
+
+        DEFECTO CORREGIDO (1.1.0): se acumulaba tramo a tramo entre lecturas y
+        el último tramo (de la lectura anterior a `depth`) usaba SIEMPRE γ sobre
+        el freático (las dos ramas del condicional eran iguales), y los tramos
+        que cruzaban el freático no se partían. Con lecturas cada 0,2 m daba
+        73,8 kPa en vez de 74,0 a 4 m. Como los pesos específicos son del
+        perfil, no de cada lectura, la tensión es la expresión cerrada.
+        """
+        if depth <= 0:
+            return 0.0
+        wt = self.water_table_depth_m
+        above = min(depth, wt)
+        below = max(depth - wt, 0.0)
+        return self.gamma_above_wt_kN_m3 * above + self.gamma_below_wt_kN_m3 * below
 
     def effective_stress_kPa(self, depth: float) -> float:
         sigma = self.total_stress_kPa(depth)

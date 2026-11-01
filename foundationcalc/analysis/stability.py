@@ -69,10 +69,15 @@ def sliding_resistance_drained(
 
     H_Rd = (N_Ed · tan δ_d + c'_d · A_eff) / γ_Rh + P_p,d
 
-    δ_d ≈ δ_factor · φ_d (δ_factor = 2/3 for precast, 1 for cast-in-place).
+    δ_d = δ_factor · φ_d (EN 1997-1 §6.5.3(10): δ_d = φ'_d for cast-in-situ
+    concrete, 2/3·φ'_d for smooth precast).
+
+    DEFECTO CORREGIDO (1.1.0): se aplicaba el factor a la tangente,
+    δ_d = atan(δ_factor·tan φ_d). Con φ_d = 30° y 2/3 daba 21,05° en vez de
+    20° (+5,8 % de resistencia al deslizamiento). Con δ_factor = 1 no cambia.
     """
     phi_d_rad = math.atan(math.tan(math.radians(soil.friction_angle)) / gamma_phi)
-    delta_d_rad = math.atan(delta_factor * math.tan(phi_d_rad))
+    delta_d_rad = delta_factor * phi_d_rad
     c_d = soil.cohesion / gamma_c
 
     friction_term = N_Ed * math.tan(delta_d_rad)

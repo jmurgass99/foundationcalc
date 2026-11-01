@@ -7,7 +7,11 @@ existe un empuje hidrostático que puede levantar la estructura. Verifica:
     FS_uplift = W_estabilizador / U_hidrostatico  >= FS_min
 
 con FS_min según código:
-- EU (EC 7 §10.2): UPL combination, 1.0 (con γ-factors)
+- EU (EC 7 §2.4.7.4, estado UPL): G_dst,d ≤ G_stb,d con γ_G;stb = 0,9 y
+  γ_G;dst ≥ 1,0, es decir W/U ≥ 1/0,9 = 1,111 como mínimo (1,0 es el valor
+  recomendado que se suele citar, sin contrastar en el original; el anejo
+  británico usa 1,1 → 1,222). Hasta la 1.1.0 el módulo pedía 1,10, por debajo
+  de ese mínimo. La capacidad de anclajes se suma sin factor parcial.
 - USA (ASCE 7-22 §2.3.6): FS = 1.5 (servicio) / 1.0 (LRFD con factores)
 - NSR-10: 1.5
 - AS 1170.0: 1.5
@@ -37,9 +41,12 @@ class BuoyancyResult:
     code: str
 
 
+# EN 1997-1 UPL: γ_G;dst·U ≤ γ_G;stb·W with γ_G;stb = 0.9 and γ_G;dst ≥ 1.0
+_FS_UPL_EC7 = 1.0 / 0.9
+
 _FS_REQ = {
-    "USA": 1.5, "ASCE": 1.5, "EU": 1.10, "EUROCODE": 1.10,
-    "NSR": 1.5, "CO": 1.5, "AS": 1.5, "AU": 1.5, "SG": 1.10, "SS": 1.10,
+    "USA": 1.5, "ASCE": 1.5, "EU": _FS_UPL_EC7, "EUROCODE": _FS_UPL_EC7,
+    "NSR": 1.5, "CO": 1.5, "AS": 1.5, "AU": 1.5, "SG": _FS_UPL_EC7, "SS": _FS_UPL_EC7,
 }
 
 

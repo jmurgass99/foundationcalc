@@ -36,6 +36,10 @@ dist/
 # Outputs
 out/
 output/
+# los ejemplos escriben sus ficheros en examples/out/ (no se versiona);
+# su salida de consola en examples/output/ SÍ se versiona
+examples/out/
+!examples/output/
 *.pdf
 !docs/**/*.pdf
 *.log

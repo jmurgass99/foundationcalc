@@ -67,9 +67,12 @@ def liquefaction_screening(
     if alpha_S < 0.15:
         if clay_fraction > 20 and plasticity_index > 10:
             return LiquefactionCheck(required=False, reason="Clay > 20% with PI > 10 (α·S < 0.15).")
-        if silt_fraction > 35 and N_1_60 is not None and N_1_60 > 30:
+        # EN 1998-5 §4.1.4: arenas con más de un 35 % de limo y N1(60) > 20.
+        # DEFECTO CORREGIDO (1.1.0): el código exigía N1(60) > 30 (el umbral
+        # de las arenas limpias) y pedía el análisis completo de más.
+        if silt_fraction > 35 and N_1_60 is not None and N_1_60 > 20:
             return LiquefactionCheck(
-                required=False, reason="Silt > 35% with N_1(60) > 30 (α·S < 0.15).",
+                required=False, reason="Silt > 35% with N_1(60) > 20 (α·S < 0.15).",
                 N_1_60=N_1_60,
             )
         if N_1_60 is not None and N_1_60 > 30:
@@ -140,9 +143,18 @@ def seismic_thrust(
     E_ws: float = 0.0,
     E_wd: float = 0.0,
 ) -> MononobeOkabeResult:
-    """Design seismic earth thrust (M-O):
+    """Design seismic earth thrust (M-O, EN 1998-5 Annex E):
 
         E_d = (1/2) · γ* · (1 ± k_v) · K · H² + E_ws + E_wd
+
+    `dynamic_increment` is E_d minus ½·γ*·K·H² and minus the static water
+    thrust E_ws, i.e. the vertical-acceleration part plus the hydrodynamic
+    E_wd. It is NOT the increment over the static active thrust (this
+    function does not know K_a). `theta_deg` is not known here and is 0.
+
+    DEFECTO CORREGIDO (1.1.0): `dynamic_increment` era E_d − estático
+    + E_ws + E_wd: contaba el agua dos veces y la hidrostática como dinámica
+    (con k_v = 0, E_ws = 10 y E_wd = 5 daba 30 en vez de 5 kN/m).
     """
     factor = (1.0 + kv) if kv >= 0 else (1.0 - kv)
     static = 0.5 * gamma_star * K_mo * H ** 2
@@ -151,7 +163,7 @@ def seismic_thrust(
         K=K_mo,
         theta_deg=0.0,
         seismic_thrust=E_d,
-        dynamic_increment=E_d - static + E_ws + E_wd,
+        dynamic_increment=E_d - static - E_ws,
     )
 
 

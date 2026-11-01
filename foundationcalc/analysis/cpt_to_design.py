@@ -88,8 +88,13 @@ def soil_profile_from_cpt(
     """
     summaries = cpt.stratify(n_layers=n_layers)
     soil_layers: List[SoilLayer] = []
-    for s in summaries:
-        thickness = max(s.z_bot - s.z_top, 0.1)
+    for i, s in enumerate(summaries):
+        # El primer estrato llega hasta la superficie: SoilProfile empieza en
+        # z = 0 y la primera lectura del CPT no. DEFECTO CORREGIDO (1.1.0):
+        # antes el primer estrato medía z_bot − z_top y todos los contactos
+        # del perfil subían tanto como la profundidad de la primera lectura.
+        z_top = 0.0 if i == 0 else s.z_top
+        thickness = max(s.z_bot - z_top, 0.1)
         if s.sbt_zone in (SBTZone.SAND, SBTZone.SAND_MIX, SBTZone.DENSE_SAND_GRAVEL):
             soil_layers.append(SoilLayer(
                 name=f"{s.sbt_zone.name.lower()}_{round(s.z_top, 1)}m",

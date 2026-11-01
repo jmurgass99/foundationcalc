@@ -57,14 +57,20 @@ class CombinedFootingResult:
     B_m: float           # uniform width (rectangular)  OR  average width
     B1_m: float = 0.0    # short side (column 1 end)
     B2_m: float = 0.0    # long side (column 2 end)
+    #: d + x_R: posición de la resultante medida desde el centro de la
+    #: columna 1, más la distancia d al lindero (con d = 0, desde la columna 1).
     x_resultant_m: float = 0.0
     A_required_m2: float = 0.0
     A_provided_m2: float = 0.0
-    M_pos_kNm: float = 0.0      # max positive (sagging, top fibre tension)
-    M_neg_kNm: float = 0.0      # max negative (hogging, bottom fibre tension)
+    #: Mayor momento positivo del diagrama (kN·m, ancho completo): tracción en
+    #: la cara INFERIOR (bajo los pilares y en los vuelos).
+    M_pos_kNm: float = 0.0
+    #: Momento más negativo (kN·m, ancho completo): tracción en la cara
+    #: SUPERIOR (entre pilares).
+    M_neg_kNm: float = 0.0
     V_max_kN: float = 0.0
-    As_top_mm2: float = 0.0     # reinforcement near top (hogging)
-    As_bot_mm2: float = 0.0     # reinforcement near bottom (sagging)
+    As_top_mm2: float = 0.0     # armadura superior total, para |M_neg|
+    As_bot_mm2: float = 0.0     # armadura inferior total, para M_pos
     note: str = ""
 
 
@@ -82,7 +88,13 @@ def design_combined_footing(
 
     # Position of resultant from column 1
     x_R = (P2 * s) / R     # measured from column 1, towards column 2
-    x_R_from_property = d + x_R
+    # `d` es la distancia del lindero a la CARA exterior de la columna 1 (así
+    # lo usan L_rect y el diagrama de flectores: centro de la columna 1 en
+    # d + c/2), luego la resultante está a d + c/2 + x_R del lindero.
+    # DEFECTO CORREGIDO (1.1.0): aquí faltaba c/2. El rectángulo no lo notaba
+    # (L_rect ya sumaba la columna), pero el trapecio se ajustaba a un
+    # centroide desplazado c/2 de la resultante (presión no uniforme).
+    x_R_from_property = d + inputs.column_size_m / 2.0 + x_R
 
     # Required base area (no eccentricity → uniform q_allow)
     A_req = R / inputs.q_allow_kPa
@@ -90,7 +102,7 @@ def design_combined_footing(
 
     # Try rectangular first: place the footing centred on the resultant.
     # Total length L such that centre lies at x_R_from_property → L = 2 · x_R_from_property
-    L_rect = 2.0 * x_R_from_property + inputs.column_size_m
+    L_rect = 2.0 * x_R_from_property
     B_rect = A_req / L_rect
 
     if d <= 0.05 * s and B_rect > 0:
@@ -148,14 +160,22 @@ def design_combined_footing(
     x1 = d + inputs.column_size_m / 2.0  # column 1 centre
     x2 = x1 + s                           # column 2 centre
 
-    # Soil reaction acts upward, column loads act downward. Computing
-    # the moment from the left, with the upward distributed reaction
-    # contributing positively, gives a sign convention where:
-    #   m > 0  →  hogging in the footing  →  tension on the TOP fibre
-    #   m < 0  →  sagging in the footing  →  tension on the BOTTOM fibre
-    # The boundary value M_at(L_final) is zero by global equilibrium, so
-    # cantilever moments are probed at the column centres (close to the
-    # column-face peak), not at the slab edge.
+    # Soil reaction acts upward, column loads act downward. Moment from the
+    # left with the upward reaction positive:
+    #   m > 0  →  the soil pressure bends the slab up between supports, as in
+    #             the overhangs and under the columns → tension at the BOTTOM
+    #   m < 0  →  between the columns (the slab spans as an inverted beam)
+    #             → tension at the TOP
+    # M_at(0) = M_at(L) = 0 by global equilibrium.
+    #
+    # DEFECTO CORREGIDO (1.1.0): el convenio estaba al revés (m > 0 «tracción
+    # arriba») y el tramo entre pilares se resumía con el MÁXIMO de 19
+    # muestras, con lo que el momento negativo entre pilares —el de la
+    # armadura superior, normalmente el mayor— no se recogía nunca. Además el
+    # momento TOTAL se dimensionaba como si fuera por metro (b = 1 m) y la
+    # armadura se multiplicaba después por B. Caso de 2 pilares de 900 y
+    # 1300 kN a 5 m: el tramo da −702 kN·m (antes no aparecía) y la armadura
+    # superior salía de los +399 kN·m de bajo el pilar.
     def M_at(x: float) -> float:
         m = w_soil * x * x / 2.0
         if x > x1:
@@ -164,54 +184,33 @@ def design_combined_footing(
             m -= P2 * (x - x2)
         return m
 
-    # Sample at column centres, midspan, and a fine search inside the span
-    span_samples = [
-        M_at(x1 + (x2 - x1) * k / 20.0) for k in range(1, 20)
-    ]
-    M_mid = max(span_samples)            # peak hogging between columns
-    M_left_col = M_at(x1) if x1 > 0 else 0.0
-    M_right_col = M_at(x2)
-    # M_right_col is taken just before the column 2 contribution kicks in;
-    # the matching value just AFTER column 2 (cantilever right of col 2)
-    # is also evaluated to capture the right overhang peak:
-    if L_final > x2:
-        right_overhang_samples = [
-            M_at(x2 + (L_final - x2) * k / 10.0)
-            for k in range(1, 11)
-        ]
-        M_right_cant = min(right_overhang_samples)  # most negative if any
-    else:
-        M_right_cant = 0.0
-
-    moments = [M_mid, M_left_col, M_right_col, M_right_cant]
-    M_top = max(moments)   # most positive  → top steel (hogging)
-    M_bot = min(moments)   # most negative  → bottom steel (sagging)
-
-    # Legacy fields keep the older naming so existing callers don't break,
-    # but the values now reflect physical sign: M_neg is the sagging
-    # extreme (bottom-fibre tension), M_pos is the hogging extreme
-    # (top-fibre tension).
-    M_pos = M_top
-    M_neg = M_bot
+    n_samples = 800
+    samples = [M_at(L_final * k / n_samples) for k in range(n_samples + 1)]
+    # Exact extremes too: zero shear between the columns and the column axes.
+    candidates = samples + [M_at(x1), M_at(x2)]
+    if w_soil > 0 and x1 < P1 / w_soil < x2:
+        candidates.append(M_at(P1 / w_soil))
+    M_pos = max(max(candidates), 0.0)   # bottom tension
+    M_neg = min(min(candidates), 0.0)   # top tension
 
     # Shear: max at column faces
     V_max = max(P1, P2)
 
-    # ------------- Reinforcement (per metre width) --------------
+    # ------------- Reinforcement over the average width --------------
     d_eff_mm = inputs.thickness_m * 1000 - 70 - 10  # cover 70, half ϕ20
+    b_mm = B_avg * 1000.0
     flex_top = flexural_reinforcement(
-        M_Ed_kNm=abs(M_top),
-        b_mm=1000, d_mm=d_eff_mm,
+        M_Ed_kNm=abs(M_neg),
+        b_mm=b_mm, d_mm=d_eff_mm,
         concrete=concrete, steel=steel,
     )
     flex_bot = flexural_reinforcement(
-        M_Ed_kNm=abs(M_bot),
-        b_mm=1000, d_mm=d_eff_mm,
+        M_Ed_kNm=abs(M_pos),
+        b_mm=b_mm, d_mm=d_eff_mm,
         concrete=concrete, steel=steel,
     )
-    # Multiply by average width
-    As_top = flex_top.As_provided * B_avg
-    As_bot = flex_bot.As_provided * B_avg
+    As_top = flex_top.As_provided
+    As_bot = flex_bot.As_provided
 
     return CombinedFootingResult(
         shape=shape,
@@ -219,7 +218,7 @@ def design_combined_footing(
         B_m=B_avg,
         B1_m=B1,
         B2_m=B2,
-        x_resultant_m=x_R_from_property,
+        x_resultant_m=d + x_R,
         A_required_m2=A_req,
         A_provided_m2=A_provided,
         M_pos_kNm=M_pos, M_neg_kNm=M_neg,

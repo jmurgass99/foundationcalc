@@ -35,30 +35,46 @@ class StripFootingResult:
 
 
 def render_strip_footing_memo(inp: StripFootingInput) -> StripFootingResult:
-    # B_req = w / σ_adm (sin peso propio, iterar)
-    B = inp.w_kN_per_m / inp.sigma_admissible_kPa
+    """Ancho de una zapata corrida por tensión admisible, con su peso propio.
+
+    B = w / (σ_adm − H·γ_c): el peso propio por metro cuadrado (H·γ_c) se
+    descuenta de la tensión admisible, de modo que (w + B·H·γ_c)/B = σ_adm.
+
+    DEFECTO CORREGIDO (1.1.0): se tomaba B = w/σ_adm sin peso propio (el
+    comentario decía «iterar» y nunca se iteraba), y la verificación del paso
+    3, que sí suma el peso propio, salía FAIL para cualquier dato: la memoria
+    proponía un ancho que ella misma rechazaba.
+    """
+    sigma_net = inp.sigma_admissible_kPa - inp.H_footing_m * inp.gamma_concrete_kN_m3
+    if sigma_net <= 0:
+        raise ValueError(
+            f"σ_adm = {inp.sigma_admissible_kPa:g} kPa no supera el peso propio de la "
+            f"zapata ({inp.H_footing_m * inp.gamma_concrete_kN_m3:g} kPa): no hay ancho posible."
+        )
+    B = inp.w_kN_per_m / sigma_net
     # Peso propio por metro lineal
     W_sf = B * inp.H_footing_m * inp.gamma_concrete_kN_m3
     sigma_actual = (inp.w_kN_per_m + W_sf) / B
+    ok = sigma_actual <= inp.sigma_admissible_kPa * (1.0 + 1e-9)
 
     md = (
         "# Memoria — Zapata corrida\n\n"
         f"**Carga línea:** w = {inp.w_kN_per_m:.1f} kN/m\n"
         f"**Tensión admisible:** σ_adm = {inp.sigma_admissible_kPa:.0f} kPa\n\n"
         f"## Paso 1 — Ancho mínimo\n"
-        f"B = w / σ_adm = {B*1000:.0f} mm = **{B:.2f} m**\n\n"
+        f"B = w / (σ_adm − H·γ_c) = {B*1000:.0f} mm = **{B:.2f} m**\n\n"
         f"## Paso 2 — Peso propio\n"
         f"W_sf = B·H·γ_c = {B:.2f}·{inp.H_footing_m:.2f}·{inp.gamma_concrete_kN_m3} "
         f"= {W_sf:.1f} kN/m\n\n"
         f"## Paso 3 — Verificación\n"
         f"σ_actual = (w + W_sf) / B = {sigma_actual:.1f} kPa\n"
-        f"{'✅ PASS' if sigma_actual <= inp.sigma_admissible_kPa else '❌ FAIL'}\n"
+        f"{'✅ PASS' if ok else '❌ FAIL'}\n"
     )
 
     return StripFootingResult(
         B_required_m=B, weight_self_kN_per_m=W_sf,
         sigma_actual_kPa=sigma_actual,
-        is_safe=sigma_actual <= inp.sigma_admissible_kPa,
+        is_safe=ok,
         markdown=md,
     )
 

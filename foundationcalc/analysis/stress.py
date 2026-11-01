@@ -62,7 +62,15 @@ def boussinesq_strip_load_dsigma_z(
 
         Δσ_z = (q / π) · [α + sin α · cos(α + 2 β)]
 
-    where α and β are angles subtended at the point.
+    where α = θ1 − θ2 is the angle subtended by the strip at the point and β
+    is the angle from the vertical to the near edge, θ2 (θ1, θ2: angles from
+    the vertical to the edges at x + a and x − a), so that α + 2β = θ1 + θ2.
+
+    DEFECTO CORREGIDO (1.1.0): se tomaba β = (θ1 + θ2)/2, que da
+    cos(2·θ1) en lugar de cos(θ1 + θ2). Bajo el eje de una zapata corrida de
+    2 m a z = 2 m salía 0,448·q frente a 0,550·q (−18,5 %), y bajo el borde
+    0,25·q frente a 0,409·q. Comprobado contra la integración numérica de
+    cargas lineales (`tests/test_fix_110_*`).
     """
     if z_m <= 0:
         return 0.0
@@ -71,8 +79,7 @@ def boussinesq_strip_load_dsigma_z(
     theta_1 = math.atan2(x_m + a, z_m)
     theta_2 = math.atan2(x_m - a, z_m)
     alpha = theta_1 - theta_2
-    beta = (theta_1 + theta_2) / 2.0
-    return q_kPa / math.pi * (alpha + math.sin(alpha) * math.cos(alpha + 2.0 * beta))
+    return q_kPa / math.pi * (alpha + math.sin(alpha) * math.cos(theta_1 + theta_2))
 
 
 def boussinesq_circular_load_centre(q_kPa: float, R_m: float, z_m: float) -> float:

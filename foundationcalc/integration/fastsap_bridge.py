@@ -16,28 +16,33 @@ class FastSAPFoundationPipeline:
         self.sap_client = sap_client
         
     def extract_reactions(self, node_ids: List[str] = None) -> List[Dict[str, Any]]:
+        """NO implementado: este puente no lee reacciones de SAP2000.
+
+        DEFECTO CORREGIDO (1.1.0): devolvía para cualquier nudo unas reacciones
+        INVENTADAS (P = 1200 kN, Mx = 150 kN·m, My = 80 kN·m, Hx = 40 kN,
+        Hy = 20 kN) presentadas como «extraídas de FastSAP», y
+        `auto_design_footings` dimensionaba zapatas con ellas. Ahora se niega.
+        Para dimensionar desde reacciones reales usa
+        `integration.foundation_chain.foundation_chain_from_etabs` con una lista
+        de dicts o de `Reaction`, o un cliente con `get_joint_reactions`.
+
+        Raises:
+            FastSAPBridgeError: siempre.
         """
-        Extracts base reactions from FastSAP.
-        Returns a list of dicts with Fz, Mx, My per node.
-        """
-        results = []
-        if node_ids is None:
-            node_ids = ["1", "2", "3", "4"] # Dummy default
-            
-        for node in node_ids:
-            results.append({
-                "node_id": node,
-                "P_kN": 1200.0,
-                "Mx_kNm": 150.0,
-                "My_kNm": 80.0,
-                "Hx_kN": 40.0,
-                "Hy_kN": 20.0
-            })
-        return results
+        raise FastSAPBridgeError(
+            "extract_reactions no está implementado: no se leen reacciones de "
+            "SAP2000 y no se inventan. Pasa las reacciones a "
+            "foundation_chain_from_etabs (dicts, Reaction o un cliente con "
+            "get_joint_reactions)."
+        )
         
     def auto_design_footings(self, reactions: List[Dict[str, Any]]) -> List[Dict]:
-        """
-        Takes reactions and performs EC7 design for isolated footings.
+        """Predimensionado de zapatas cuadradas por tensión máxima elástica.
+
+        NO es una comprobación EN 1997-1: usa q_max = P/A + Mx/Sx + My/Sy contra
+        una tensión admisible FIJA de 300 kPa, crece de 0,2 en 0,2 m desde 2 m y
+        se detiene en 5 m («FALLA»). Para el dimensionado con presión admisible
+        del proyecto usa `reaction_bridge.size_isolated_footing_from_reactions`.
         """
         designs = []
         for r in reactions:

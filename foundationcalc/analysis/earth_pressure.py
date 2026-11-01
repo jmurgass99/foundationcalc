@@ -46,6 +46,24 @@ def Kp_rankine(phi_deg: float) -> float:
     return math.tan(math.radians(45.0 + phi_deg / 2.0)) ** 2
 
 
+def Ka_rankine_inclined(phi_deg: float, alpha_deg: float = 0.0) -> float:
+    """Rankine active coefficient for a backfill inclined α (cohesionless).
+
+        K_a = cos α · [cos α − √(cos²α − cos²φ)] / [cos α + √(cos²α − cos²φ)]
+
+    The thrust acts parallel to the backfill surface; valid for |α| ≤ φ.
+    For α = 0 it reduces to tan²(45° − φ/2).
+    """
+    if abs(alpha_deg) > phi_deg + 1e-9:
+        raise ValueError(
+            f"Rankine con talud: |α| = {abs(alpha_deg):g}° > φ = {phi_deg:g}°, "
+            "el relleno no es estable y la fórmula no aplica."
+        )
+    ca = math.cos(math.radians(alpha_deg))
+    root = math.sqrt(max(ca * ca - math.cos(math.radians(phi_deg)) ** 2, 0.0))
+    return ca * (ca - root) / (ca + root)
+
+
 def Ka_coulomb(
     phi_deg: float,
     delta_deg: float = 0.0,

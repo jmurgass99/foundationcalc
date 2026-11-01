@@ -114,18 +114,28 @@ def test_thicker_mat_redistributes_more():
 
 
 def test_uplift_iteration_disables_lifted_nodes():
-    """When some nodes lift off, the iteration must mark them inactive."""
+    """When some nodes lift off, the iteration must mark them inactive.
+
+    Losa casi rígida (l = (D/k)^0.25 = 3,2 m > semiancho) con la carga a 0,5 m
+    del borde: e = 2,5 m > L/6 = 1 m, el lado opuesto despega como sólido
+    rígido. (Hasta la 1.1.0 el test ponía la carga en el centro de una losa
+    flexible y el «despegue» lo producía el modo espurio en damero de la
+    integración de cortante con un punto: con MITC4 esa losa no despega,
+    w_min = 0,78 mm.)
+    """
     mat = MatFoundationSolver(
-        length=6.0, width=6.0, thickness=0.4,
+        length=6.0, width=6.0, thickness=0.8,
         nx=12, ny=12, k_s=12000.0,
     )
-    # Heavy point load in the centre → corners want to lift
-    mat.add_column_load(x=3.0, y=3.0, P=800.0)
-    res = mat.solve(allow_uplift=True, max_iter=20)
+    mat.add_column_load(x=5.5, y=3.0, P=800.0)
+    res = mat.solve(allow_uplift=True, max_iter=30)
     assert res.converged
     assert len(res.uplift_nodes) > 0
     # Every uplift node must have q_soil == 0
     assert np.all(res.q_soil[res.uplift_nodes] == 0.0)
+    # Sólido rígido: contacto en 3·(L/2 − e) = 1,5 m desde el borde cargado,
+    # así que solo despegan nudos con x <= 4,5 m (los del lado opuesto).
+    assert res.nodes_xy[res.uplift_nodes, 0].max() <= 4.5 + 1e-9
 
 
 def test_rejects_bad_inputs():

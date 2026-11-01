@@ -310,14 +310,25 @@ def solve_pile_lateral(
         # We eliminate y[-1] and y[-2] by writing them as a function of y[0]..y[2]
         # Free-head BC:
         if pile.fixed_head:
-            #  y'(0) = 0 ⇒ y[-1] = y[1]
-            #  y''(0) = M/EI ⇒ y[-1] − 2 y[0] + y[1] = M h² / EI
-            #             ⇒ 2 y[1] − 2 y[0] = M h² / EI
-            #             ⇒ y[0] = y[1] − M h²/(2 EI)
+            # Fixed (capped) head: y'(0) = 0 and shear H at the head; the head
+            # moment is a RESULT (`head_moment_M_kNm` is ignored).
+            #   y'(0) = 0      ⇒ y[-1] = y[1]
+            #   shear (same relation as the free head):
+            #     y[-2] = 2 y[-1] − 2 y[1] + y[2] − 2 H h³/EI = y[2] − 2 H h³/EI
+            #   FD at i = 0:
+            #     y[-2] − 4 y[-1] + 6 y[0] − 4 y[1] + y[2]
+            #       = 6 y[0] − 8 y[1] + 2 y[2] − 2 H h³/EI
+            #   ⇒ EI/h⁴·(6 y0 − 8 y1 + 2 y2) + k0·y0 = 2 H / h
+            #
+            # DEFECTO CORREGIDO (1.1.0): esta rama imponía y''(0) = M/EI con el
+            # M de entrada (0 por defecto) e ignoraba H: un pilote encepado con
+            # carga horizontal salía con desplazamiento y momentos nulos.
             K[0, :] = 0.0
-            K[0, 0] = 1.0
-            K[0, 1] = -1.0
-            F0 = -M * h ** 2 / (2.0 * EI)
+            K[0, 0] = 6.0 * EI / h ** 4 + k_secant[0]
+            K[0, 1] = -8.0 * EI / h ** 4
+            K[0, 2] = 2.0 * EI / h ** 4
+            F0 = 2.0 * H / h
+            F1 = 0.0
             # row 1: full FD with eliminated y[-1] = y[1]:
             # (y[1] − 4 y[0] + 6 y[1] − 4 y[2] + y[3])·EI/h^4 + k·y[1] = 0
             K[1, :] = 0.0
@@ -356,6 +367,12 @@ def solve_pile_lateral(
             K[1, 1] = 5.0 * EI / h ** 4 + k_secant[1]
             K[1, 2] = -4.0 * EI / h ** 4
             K[1, 3] = EI / h ** 4
+            # The + M h²/EI of that row goes to the right-hand side:
+            #   EI/h⁴·(−2 y0 + 5 y1 − 4 y2 + y3) + k1·y1 = −M / h²
+            # DEFECTO CORREGIDO (1.1.0): este término se perdía (F[1] = 0) y
+            # con momento en cabeza el resultado dependía de la malla
+            # (M = 10 kN·m: 2,5 mm con 80 tramos, 7,9 mm con 200).
+            F1 = -M / h ** 2
 
         # BCs at tip (node n-1 and n-2): zero moment and shear (free)
         # y''(L) = 0  ⇒  y[n] − 2 y[n-1] + y[n-2] = 0  ⇒  y[n] = 2 y[n-1] − y[n-2]
@@ -383,10 +400,8 @@ def solve_pile_lateral(
 
         # RHS
         F = np.zeros(n)
-        if not pile.fixed_head:
-            F[0] = F0
-        else:
-            F[0] = F0  # y[0] = y[1] − M h²/(2 EI)
+        F[0] = F0
+        F[1] = F1
 
         try:
             y_new = np.linalg.solve(K, F)
@@ -407,8 +422,12 @@ def solve_pile_lateral(
     p_arr = np.zeros(n)
     for i in range(1, n - 1):
         M_arr[i] = EI * (y[i - 1] - 2.0 * y[i] + y[i + 1]) / h ** 2
+    # Head values from the boundary conditions (the loop above skipped them):
+    # free head M(0) = M; fixed head M(0) = EI·(y[-1] − 2 y0 + y1)/h² with y[-1] = y1.
+    M_arr[0] = (EI * (2.0 * y[1] - 2.0 * y[0]) / h ** 2) if pile.fixed_head else M
     for i in range(2, n - 2):
         V_arr[i] = EI * (y[i + 2] - 2.0 * y[i + 1] + 2.0 * y[i - 1] - y[i - 2]) / (2.0 * h ** 3)
+    V_arr[0] = H   # shear boundary condition at the head
     for i in range(n):
         p_arr[i] = _evaluate_py(pile, z[i], y[i])
 

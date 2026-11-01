@@ -9,10 +9,18 @@ This module gives:
 
 - The **earth pressure diagram** that engineers use for anchored walls
   (trapezoidal / apparent earth pressure per Terzaghi-Peck & FHWA).
-- Distribution of horizontal reactions among the anchor levels (assumes
-  multi-prop continuous beam).
-- **Anchor design** per level: bond length, free length and capacity
-  verification (EN 1997-1 §8 + EN 1537).
+- Distribution of the total design thrust among the anchor levels in
+  EQUAL parts (P_total / n), whatever their depth and spacing: it is not
+  a continuous-beam or tributary-area analysis (for tributary strut
+  loads see `foundationcalc.excavations.strut_force`).
+- **Anchor sizing** per level: the bond length is SIZED so that
+  π·D·q_s·L_bond = γ_a·T_d, hence `bond_utilization` is 1.0 by
+  construction (it is not a verification of a given length). γ_a = 1.5
+  and the q_s table are module values, not checked against EN 1997-1
+  Table A.12 nor against FHWA-IF-99-015 (sin contrastar).
+- Apparent pressure (ACTIVE anchors): 0.65·K_a·γ·H uniform over the
+  full height (Terzaghi-Peck, sands); the surcharge adds 0.5·q·H
+  (coefficient 0.5 instead of K_a, module heuristic).
 
 Reference: FHWA-IF-99-015 (Ground Anchors and Anchored Systems).
 Theory: docs/theory/06_retaining_walls.md §6.1 (anchored walls).
@@ -144,7 +152,7 @@ class AnchoredWallDesigner:
     def _apparent_pressure_kPa(self) -> float:
         """Terzaghi-Peck trapezoidal envelope for sands."""
         K_a = math.tan(math.radians(45.0 - self.load.phi_deg / 2.0)) ** 2
-        # Sands (Terzaghi-Peck): p = 0.65 · γ · H · K_a (uniform over the lower 0.75 H)
+        # Sands (Terzaghi-Peck): p = 0.65 · γ · H · K_a, uniform over the full height
         return 0.65 * self.load.gamma_kN_m3 * self.geo.H_excavation * K_a
 
     def _design_pressure_for_mode(self, mode: AnchorMode) -> tuple[float, float]:
@@ -191,7 +199,7 @@ class AnchoredWallDesigner:
             T_per_m_wall = share                                    # kN/m of wall
             T_per_anchor = T_per_m_wall * lvl.horizontal_spacing_m  # kN
             q_s = _BOND_RESISTANCE_kPa.get(lvl.bond_zone_soil, 100.0)
-            gamma_a = 1.5    # γ_anchor (EC7 A.12)
+            gamma_a = 1.5    # module value (not the EN 1997-1 Table A.12 figure; sin contrastar)
             T_design = T_per_anchor / math.cos(math.radians(lvl.inclination_deg))
             bond_capacity_per_m = math.pi * lvl.drill_diameter_m * q_s   # kN/m
             L_bond_required = T_design * gamma_a / bond_capacity_per_m

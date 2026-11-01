@@ -115,14 +115,18 @@ class CounterfortWallDesigner:
         gG = pf.actions.gamma_G_unfav
         gQ = pf.actions.gamma_Q_unfav
 
-        phi = self.load.backfill.friction_angle
+        # Design friction angle of the STR set (tan φ_d = tan φ_k/γ_φ), as in
+        # the cantilever stem; the surcharge part takes γ_Q (corregido 1.1.0:
+        # antes φ_k y la sobrecarga con γ_G en el contrafuerte).
+        phi = math.degrees(math.atan(
+            math.tan(math.radians(self.load.backfill.friction_angle)) / pf.soil.gamma_phi))
         gamma = self.load.backfill.unit_weight
         delta = phi * self.load.delta_over_phi if self.load.use_coulomb else 0.0
         H = self.geo.H
         # Use Coulomb / Rankine K_a from active_thrust at full H:
         thrust = active_thrust(
             H=H, gamma=gamma, phi_deg=phi,
-            c_prime=self.load.backfill.cohesion,
+            c_prime=self.load.backfill.cohesion / pf.soil.gamma_c,
             surcharge_q=self.load.surcharge_q,
             use_coulomb=self.load.use_coulomb,
             delta_deg=delta, beta_deg=90.0, alpha_deg=0.0,
@@ -139,7 +143,8 @@ class CounterfortWallDesigner:
         # ----- Counterfort acting as a tapered cantilever ----------------
         # Tributary load on one counterfort = soil thrust over its tributary width.
         # The counterfort acts as a triangular cantilever held by the base.
-        P_h_d = gG * thrust.thrust_P * L_span        # kN total horizontal per counterfort
+        P_surch_k = Ka * self.load.surcharge_q * H
+        P_h_d = (gG * (thrust.thrust_P - P_surch_k) + gQ * P_surch_k) * L_span  # kN per counterfort
         z_arm = thrust.point_of_application_z        # m
         # Tie at the top of the counterfort (connects to heel slab) to balance
         # the vertical component (Coulomb δ): roughly T_tie ≈ P_h_d · tan δ

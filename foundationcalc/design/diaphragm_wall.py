@@ -17,9 +17,17 @@ This module gives:
 - **Embedment depth** required to mobilise enough passive pressure
   to balance the active thrust above (Free Earth Support method —
   classical Blum / Tschebotarioff).
-- **Prop forces** at each support level.
-- **Maximum bending moment** in the wall.
-- **Penetration safety factor** F = M_passive / M_active ≥ 1.5–2.0.
+- **Prop force** from horizontal equilibrium with the passive force that
+  the moment equilibrium about the (upper) prop actually mobilises,
+  P_p,mob = M_a / arm_p. With several prop levels the total is split in
+  equal parts — a heuristic that does not satisfy moment equilibrium,
+  so the bending diagram is only rigorous for a single prop.
+- **Bending moment and shear** by integrating the net pressure
+  (design active minus mobilised passive, triangular below formation).
+- **Penetration ratio** F = M_passive / M_active computed with DESIGN
+  values (φ_d of set M, γ_G/γ_Q on the active side, γ_R;e on the passive
+  side); `embedment_required_m` targets F = 1.5 on top of those factors.
+- Cohesion and water are NOT modelled: `check()` raises if they are given.
 
 References: EN 1997-1 §9, EAB-86 (German DIN approach), Bowles 2001.
 Theory: docs/theory/06_retaining_walls.md §6.1 (diaphragm walls).
@@ -31,6 +39,7 @@ import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+import numpy as np
 from pydantic import BaseModel, Field
 
 from ..codes.eurocode7 import DesignApproach, LimitState, get_partial_factors
@@ -64,6 +73,8 @@ class DiaphragmWallResult:
     prop_forces_kN_per_m: List[float]
     M_max_kNm_per_m: float
     V_max_kN_per_m: float
+    P_passive_mobilised_kN_per_m: float = 0.0
+    z_of_M_max_m: float = 0.0
 
 
 class DiaphragmWallDesigner:
@@ -87,96 +98,102 @@ class DiaphragmWallDesigner:
     def _K_p(phi_deg: float) -> float:
         return math.tan(math.radians(45.0 + phi_deg / 2.0)) ** 2
 
-    def check(self) -> DiaphragmWallResult:
+    def _design_parameters(self) -> dict:
         pf = get_partial_factors(self.da, LimitState.GEO)
-        gG = pf.actions.gamma_G_unfav
-        gR_e = 1.4     # EC7 R2 earth resistance
+        # Design strength (set M): tan φ_d = tan φ_k / γ_φ; passive earth
+        # resistance divided by γ_R;e of the approach (R2 = 1,4; R1/R3 = 1,0).
+        phi_d = math.degrees(math.atan(
+            math.tan(math.radians(self.load.phi_deg)) / pf.soil.gamma_phi))
+        return {
+            "gG": pf.actions.gamma_G_unfav,
+            "gQ": pf.actions.gamma_Q_unfav,
+            "gR_e": pf.resistance.gamma_Re,
+            "phi_d": phi_d,
+            "K_a": self._K_a(phi_d),
+            "K_p": self._K_p(phi_d),
+        }
 
-        K_a = self._K_a(self.load.phi_deg)
-        K_p = self._K_p(self.load.phi_deg)
+    def _moments_about_prop(self, D: float, prop_z: float, dp: dict) -> Tuple[float, float, float, float]:
+        """(P_a,d, M_a about the prop, P_p,d available, arm of P_p) for embedment D."""
+        H = self.geo.H_excavation
+        gamma = self.load.gamma_kN_m3
+        q = self.load.surcharge_q
+        Lt = H + D
+        Pa_s = dp["gG"] * 0.5 * dp["K_a"] * gamma * Lt ** 2   # resultant at 2/3·Lt
+        Pa_q = dp["gQ"] * dp["K_a"] * q * Lt                    # resultant at Lt/2
+        M_a = Pa_s * (2.0 * Lt / 3.0 - prop_z) + Pa_q * (Lt / 2.0 - prop_z)
+        P_p = 0.5 * dp["K_p"] * gamma * D ** 2 / dp["gR_e"]    # resultant at H + 2/3·D
+        arm_p = H + 2.0 * D / 3.0 - prop_z
+        return Pa_s + Pa_q, M_a, P_p, arm_p
+
+    def check(self) -> DiaphragmWallResult:
+        if self.load.c_kPa > 0 or self.load.water_table_above_excavation_m > 0:
+            raise ValueError(
+                "DiaphragmWallDesigner no modela cohesión ni agua: hasta la 1.1.0 "
+                "aceptaba c_kPa y water_table_above_excavation_m y los ignoraba "
+                "sin avisar. Úsalos a 0 o modela el empuje en otra herramienta.")
+        dp = self._design_parameters()
         H = self.geo.H_excavation
         D = self.geo.embedment_m
         gamma = self.load.gamma_kN_m3
         q = self.load.surcharge_q
+        K_a, K_p = dp["K_a"], dp["K_p"]
+        gG, gQ = dp["gG"], dp["gQ"]
+        props = sorted(self.geo.prop_levels_m) if self.geo.prop_levels_m else [0.0]
+        prop_z = props[0]
 
-        # ---- Active thrust on the inside of the wall (depth 0 to H+D) ----
-        # Acts on the BACKFILL side of the wall over total length H + D.
-        Ltot = H + D
-        # Triangular soil contribution + rectangular surcharge
-        P_a_soil = gG * 0.5 * K_a * gamma * Ltot ** 2
-        z_a_soil = Ltot / 3.0           # arm from base of wall (i.e. depth Ltot)
-        P_a_surch = gG * K_a * q * Ltot
-        z_a_surch = Ltot / 2.0
-        P_a_total = P_a_soil + P_a_surch
-        z_a = (
-            P_a_soil * (Ltot - z_a_soil) + P_a_surch * (Ltot - z_a_surch)
-        ) / max(P_a_total, 1e-9)
+        # ---- Free earth support: moments about the (upper) prop ----------
+        P_a_total, M_overturning, P_p, arm_p = self._moments_about_prop(D, prop_z, dp)
+        FoS = (P_p * arm_p) / max(M_overturning, 1e-9)
 
-        # ---- Passive resistance on the inside of the embedded portion ----
-        # Acts on the EXCAVATION side, over depth D (from H to H+D).
-        P_p = 0.5 * K_p * gamma * D ** 2 / gR_e   # divided by γ_R,e
-        # Acts from the toe upward — arm above the toe is D/3
-        z_p_above_toe = D / 3.0
-        # Arm of passive force from the prop level (assume single top prop):
-        if self.geo.prop_levels_m:
-            prop_z = min(self.geo.prop_levels_m)
-        else:
-            prop_z = 0.0
-        arm_p = (H + D) - prop_z - z_p_above_toe
-        arm_a = (H + D) - prop_z - (Ltot - z_a)
-
-        # Moment equilibrium about the prop:
-        M_overturning = P_a_total * arm_a
-        M_resisting = P_p * arm_p
-        FoS = M_resisting / max(M_overturning, 1e-9)
-
-        # ---- Required embedment (iterate so FoS = target) ----
-        # Solve M_resisting >= M_overturning · 1.5
-        # For a propped wall with single prop at top, an iterative approach
-        # is best. Simple binary search over D:
+        # ---- Required embedment for FoS = 1,5 (bisection) ----------------
+        # NOTE: the target 1.5 is applied on top of the partial factors of
+        # the design approach (double safety, kept from the original module).
         target = 1.5
         D_lo, D_hi = 0.1, 5.0 * H
-        for _ in range(40):
+        for _ in range(60):
             D_try = 0.5 * (D_lo + D_hi)
-            Ltot_t = H + D_try
-            Pa_t_s = gG * 0.5 * K_a * gamma * Ltot_t ** 2
-            Pa_t_q = gG * K_a * q * Ltot_t
-            za_t = (
-                Pa_t_s * (Ltot_t - Ltot_t / 3.0)
-                + Pa_t_q * (Ltot_t - Ltot_t / 2.0)
-            ) / max(Pa_t_s + Pa_t_q, 1e-9)
-            Pp_t = 0.5 * K_p * gamma * D_try ** 2 / gR_e
-            arm_a_t = (H + D_try) - prop_z - (Ltot_t - za_t)
-            arm_p_t = (H + D_try) - prop_z - D_try / 3.0
-            FoS_try = (Pp_t * arm_p_t) / max((Pa_t_s + Pa_t_q) * arm_a_t, 1e-9)
-            if FoS_try >= target:
+            _, M_a_t, P_p_t, arm_p_t = self._moments_about_prop(D_try, prop_z, dp)
+            if (P_p_t * arm_p_t) / max(M_a_t, 1e-9) >= target:
                 D_hi = D_try
             else:
                 D_lo = D_try
         D_req = D_hi
 
-        # ---- Prop force = ΣH (active − passive) ----
-        F_prop_total = P_a_total - P_p
-        n_props = max(len(self.geo.prop_levels_m), 1)
+        # ---- Prop force from equilibrium ----------------------------------
+        # DEFECTO CORREGIDO (1.1.0): antes T = P_a − P_p con TODO el pasivo
+        # disponible, aunque el equilibrio de momentos sólo movilice
+        # P_p,mob = M_a / brazo_p (= P_p / FoS). Con FoS > 1 subestimaba el
+        # puntal (podía salir negativo). Ahora T = P_a − P_p,mob.
+        P_p_mob = M_overturning / max(arm_p, 1e-9)
+        F_prop_total = P_a_total - P_p_mob
+        n_props = len(props)
         prop_forces = [F_prop_total / n_props] * n_props
 
-        # ---- Maximum bending moment ----
-        # Proper Free Earth Support: integrate the net pressure diagram.
-        # The bending moment along the wall is
-        #     M(z) = T_prop · (z − z_prop)  −  ∫₀^z (z − ζ) · w(ζ) dζ
-        # where w(ζ) is the net horizontal pressure at depth ζ. The
-        # maximum |M| occurs at the depth where the shear V(z) = 0.
-        # For a triangular active envelope and a single top prop, the
-        # closed-form result is
-        #     M_max  ≈  F_prop² / (2 · q_max)
-        # where q_max = K_a · γ · L_eff is the peak active pressure
-        # ordinate. This is more accurate than the prior 0.4·F·H rule.
-        q_max = K_a * gamma * Ltot * gG
-        if q_max > 0:
-            M_max = (F_prop_total ** 2) / (2.0 * q_max)
-        else:
-            M_max = F_prop_total * 0.4 * H
-        V_max = F_prop_total
+        # ---- Bending moment and shear by integrating the net pressure ----
+        # DEFECTO CORREGIDO (1.1.0): antes M_max = T²/(2·q_max), fórmula de
+        # carga UNIFORME aplicada con la ordenada máxima del triángulo activo,
+        # que con un puntal en cabeza daba momentos decenas de veces menores
+        # que el equilibrio. Ahora M(z) = Σ T_i·(z − z_i) − ∫(z − ζ)·w(ζ)dζ
+        # con w = presión activa de cálculo − pasivo movilizado (triangular
+        # bajo el fondo de excavación).
+        Lt = H + D
+        n = 4001
+        z = np.linspace(0.0, Lt, n)
+        w = gG * K_a * gamma * z + gQ * K_a * q
+        if D > 0:
+            p_peak = 2.0 * P_p_mob / D           # triangle with resultant P_p,mob
+            w = w - np.where(z > H, p_peak * (z - H) / D, 0.0)
+        dz = z[1] - z[0]
+        W = np.concatenate(([0.0], np.cumsum(0.5 * (w[1:] + w[:-1]) * dz)))
+        Mw = np.concatenate(([0.0], np.cumsum(0.5 * (W[1:] + W[:-1]) * dz)))
+        V = -W
+        M = -Mw
+        for z_i, T_i in zip(props, prop_forces):
+            V = V + np.where(z >= z_i, T_i, 0.0)
+            M = M + np.where(z >= z_i, T_i * (z - z_i), 0.0)
+        M_max = float(np.max(np.abs(M)))
+        V_max = float(np.max(np.abs(V)))
 
         return DiaphragmWallResult(
             P_active_kN_per_m=P_a_total,
@@ -186,6 +203,8 @@ class DiaphragmWallDesigner:
             prop_forces_kN_per_m=prop_forces,
             M_max_kNm_per_m=M_max,
             V_max_kN_per_m=V_max,
+            P_passive_mobilised_kN_per_m=P_p_mob,
+            z_of_M_max_m=float(z[int(np.argmax(np.abs(M)))]),
         )
 
 

@@ -150,25 +150,37 @@ def elastic_settlement_rectangle(
     q_kPa: float, B_m: float, L_m: float,
     E_kPa: float, nu: float = 0.3,
     shape_factor_I_s: float = None,
+    location: str = "centre",
 ) -> float:
-    """Elastic settlement of a flexible rectangular footing at corner / centre.
+    """Elastic settlement of a flexible rectangle on a homogeneous half-space.
 
-    s = q · B · (1 − ν²) / E · I_s
+    s = q · B · (1 − ν²) / E · I_s,   B = short side, m = L/B ≥ 1.
 
-    Default I_s is computed from L/B (Bowles 1996):
-        I_s = (a / π) · [m · ln((√(1 + m²) + m) / (√(1 + m²) − m))
-                       +     ln((√(1 + m²) + 1) / (√(1 + m²) − 1))]
-    where m = L/B and a = 1 for corner; for the centre, multiply by 4
-    and use B/2 and L/2 inside (Schmertmann-Boussinesq superposition).
+    Default I_s (Steinbrenner/Schleicher, infinite depth; Bowles 1996):
+        corner:  I_s = (1/π)·[m·ln((1 + √(1+m²))/m) + ln(m + √(1+m²))]
+        centre:  I_s = 2 · corner value  (four B/2 × L/2 corners superposed)
+    Square: 0.561 (corner) / 1.122 (centre); L/B = 2: 0.766 / 1.532.
+
+    DEFECTO CORREGIDO (1.1.0): los dos términos tenían intercambiados el
+    factor m y los argumentos de los logaritmos. En cuadrada coincidía con el
+    centro (1,12), pero con L/B = 2 daba 2,14 en lugar de 1,53 (+40 %) y con
+    L/B = 5, 7,49 en lugar de 2,10. Comprobado contra la integración
+    numérica de la solución de Boussinesq (`tests/test_fix_110_*`).
     """
     if shape_factor_I_s is None:
-        m = max(L_m, B_m) / max(min(L_m, B_m), 1e-6)
+        Bs = max(min(L_m, B_m), 1e-9)
+        m = max(L_m, B_m) / Bs
         s1 = math.sqrt(1.0 + m * m)
         I_s_corner = (1.0 / math.pi) * (
-            m * math.log((s1 + m) / max(s1 - m, 1e-6))
-            + math.log((s1 + 1.0) / max(s1 - 1.0, 1e-6))
+            m * math.log((1.0 + s1) / m) + math.log(m + s1)
         )
-        I_s = I_s_corner
+        if location == "corner":
+            I_s = I_s_corner
+        elif location == "centre":
+            I_s = 2.0 * I_s_corner
+        else:
+            raise ValueError("location debe ser 'centre' o 'corner'")
+        B_m = Bs
     else:
         I_s = shape_factor_I_s
     return q_kPa * B_m * (1.0 - nu ** 2) / E_kPa * I_s
