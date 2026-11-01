@@ -1,0 +1,21 @@
+{
+  "name": "foundationcalc-web",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Visor reactivo VanJS + Three.js + C++/WASM para cimentaciones, bulbo Boussinesq/2:1 y consolidación 1D Terzaghi",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "node --input-type=module src/__tests__/foundationWeb.test.ts"
+  },
+  "dependencies": {
+    "three": "^0.170.0",
+    "vanjs-core": "^1.5.2"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.0"
+  }
+}
