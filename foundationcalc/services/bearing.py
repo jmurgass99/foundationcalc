@@ -1,8 +1,14 @@
 """Servicios de capacidad portante.
 
-ESTADO: MÓDULO DE SERVICIO HISTÓRICO / DEPRECADO.
-La implementación CANÓNICA de capacidad portante de este paquete y del monorepo
-es ``foundationcalc.analysis.bearing_capacity`` (EN 1997-1:2004 Anexo D).
+Incluye:
+- ``bearing_capacity_meyerhof_hanna(inp)``: capacidad portante multicapa real
+  (Meyerhof & Hanna 1978, punzonamiento de estrato fuerte sobre blando) delegando
+  en ``foundationcalc.analysis.multi_layer_bc.multi_layer_bearing_capacity``.
+- ``bearing_capacity_canonical(inp)``: delegación en ``foundationcalc.analysis.bearing_capacity``
+  (EN 1997-1:2004 Anexo D).
+- ``bearing_capacity_multilayer(inp)``: servicio histórico (si ``inp.method == "meyerhof_hanna"``
+  delega en ``bearing_capacity_meyerhof_hanna``; en caso contrario mantiene la
+  formulación de estrato único por compatibilidad).
 """
 from __future__ import annotations
 
@@ -28,7 +34,7 @@ class BearingInput:
     depth: float
     layers: tuple[SoilLayerSpec, ...]
     water_table: float | None = None
-    method: str = "vesic"   # "vesic" | "meyerhof" | "hansen"
+    method: str = "vesic"   # "vesic" | "meyerhof" | "hansen" | "meyerhof_hanna"
     seismic_kh: float = 0.0  # coeficiente sísmico horizontal
 
 
@@ -41,12 +47,82 @@ class BearingResult:
     notes: list[str]
 
 
+def bearing_capacity_meyerhof_hanna(inp: BearingInput) -> BearingResult:
+    """Capacidad portante multicapa real según Meyerhof & Hanna (1978).
+
+    Construye un ``SoilProfile`` completo con todas las capas de ``inp.layers``
+    y el nivel freático ``inp.water_table``, y evalúa ``multi_layer_bearing_capacity``
+    (incluyendo punzonamiento de capa competente sobre estrato débil dentro de
+    la profundidad de influencia ``2·B``).
+    """
+    from foundationcalc.analysis.multi_layer_bc import multi_layer_bearing_capacity
+    from foundationcalc.core.geometry import RectangularFoundation
+    from foundationcalc.core.soil import SoilLayer, SoilProfile, SoilType
+
+    B = min(inp.L_x, inp.L_y)
+    L = max(inp.L_x, inp.L_y)
+    foundation = RectangularFoundation(
+        length=L * 1000.0,
+        width=B * 1000.0,
+        thickness=300.0,
+        embedment_depth=inp.depth * 1000.0,
+    )
+    profile_layers: list[SoilLayer] = []
+    for idx, lyr in enumerate(inp.layers):
+        is_cohesive = lyr.phi <= 1e-6 and (lyr.c > 0.0 or lyr.qu > 0.0)
+        cu_val = (0.5 * lyr.qu) if lyr.qu > 0.0 else (lyr.c if is_cohesive else None)
+        profile_layers.append(
+            SoilLayer(
+                name=f"Layer_{idx + 1}",
+                thickness=lyr.thickness,
+                soil_type=SoilType.COHESIVE if is_cohesive else SoilType.COHESIONLESS,
+                unit_weight=lyr.gamma,
+                saturated_unit_weight=max(lyr.gamma, 18.0),
+                friction_angle=lyr.phi,
+                cohesion=lyr.c,
+                undrained_shear_strength=cu_val,
+            )
+        )
+    profile = SoilProfile(layers=profile_layers, water_table_depth=inp.water_table)
+    res = multi_layer_bearing_capacity(
+        foundation=foundation,
+        profile=profile,
+        founding_depth_m=inp.depth,
+    )
+    qu = res.q_ult_kPa
+    if inp.seismic_kh > 0:
+        qu *= (1.0 - inp.seismic_kh / 0.5) if inp.seismic_kh < 0.5 else 0.5
+    FS = 3.0 if inp.seismic_kh == 0 else 2.5
+    qa = qu / FS
+    notes = [
+        f"Caso gobernante: {res.governing_case} (estrato: {res.governing_layer})",
+        f"Estratos en zona de influencia (2B): {', '.join(res.layers_in_influence)}",
+        f"B/L = {B / L:.2f}, FS = {FS}, qa = {qa:.1f} kPa",
+    ]
+    if res.punching_q_ult is not None:
+        notes.append(
+            f"Punzonamiento Meyerhof-Hanna: q_punch = {res.punching_q_ult:.1f} kPa "
+            f"(estrato superior = {res.bottom_strong_q_ult:.1f} kPa, inferior = {res.weak_layer_q_ult:.1f} kPa)"
+        )
+    return BearingResult(
+        qu_kPa=qu,
+        qa_kPa=qa,
+        FS=FS,
+        method="meyerhof_hanna",
+        notes=notes,
+    )
+
+
 def bearing_capacity_multilayer(inp: BearingInput) -> BearingResult:
     """Capacidad portante considerando estratificación.
 
-    DEPRECADO: Usa foundationcalc.analysis.bearing_capacity para el análisis
-    riguroso según EN 1997-1 Anexo D.
+    Si ``inp.method == "meyerhof_hanna"``, delega en ``bearing_capacity_meyerhof_hanna``
+    (modelo multicapa de Meyerhof & Hanna 1978). Para otros valores de ``method``,
+    mantiene la formulación histórica deprecada.
     """
+    if inp.method == "meyerhof_hanna":
+        return bearing_capacity_meyerhof_hanna(inp)
+
     warnings.warn(
         "foundationcalc.services.bearing.bearing_capacity_multilayer está deprecada "
         "como calculadora analítica. La implementación canónica de capacidad portante en "
@@ -175,5 +251,5 @@ __all__ = [
     "BearingResult",
     "bearing_capacity_multilayer",
     "bearing_capacity_canonical",
+    "bearing_capacity_meyerhof_hanna",
 ]
-

@@ -45,6 +45,9 @@ Issues = "https://github.com/jmurgass99/foundationcalc/issues"
 [tool.setuptools.packages.find]
 include = ["foundationcalc*"]
 
+[tool.setuptools.package-data]
+foundationcalc = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

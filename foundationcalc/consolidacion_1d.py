@@ -1,16 +1,19 @@
 """
 Consolidación 1D — teoría de Terzaghi (1943).
 
-Calcula:
-    1. Asentamiento primario S_c = (Cc/(1+e0))·H·log10(σ'f/σ'0)
-    2. Tiempo para consolidación parcial t = Tv·H_dr²/cv
-    3. Grado de consolidación U(Tv) ≈ √(4Tv/π) si U<0.6, else 1-exp(-π²Tv/4)
+Fachada sobre ``foundationcalc.analysis.consolidacion_1d`` (única fuente de verdad
+para el factor de tiempo ``Tv_from_U``, ``U_from_Tv`` y el asentamiento primario).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import exp, log10, pi, sqrt
 from typing import Any
+
+from foundationcalc.analysis.consolidacion_1d import (
+    ConsolidationInput as _AnalysisConsolidationInput,
+    Tv_from_U,
+    consolidate as _consolidate_canonical,
+)
 
 
 @dataclass(frozen=True)
@@ -41,39 +44,35 @@ class ConsolidationResult:
 
 
 def _Tv_from_U(U: float) -> float:
-    """Inversa de la curva U-Tv de Terzaghi.
-
-        U <  0.6 :  Tv = (pi/4)·U²
-        U >= 0.6 :  Tv = -(4/pi²)·ln[(1-U)·pi²/8]
-
-    DEFECTO CORREGIDO: a la rama alta le faltaba el factor pi²/8 DENTRO del
-    logaritmo (calculaba -(4/pi²)·ln(1-U)). Daba Tv90 = 0.9334 frente al
-    correcto 0.8481, un +10.1 % en todos los tiempos de consolidación.
-
-    Delega en `analysis.consolidacion_1d.Tv_from_U`, que ya era correcta, para
-    que exista UNA sola fuente de verdad. Los dos módulos coexisten con campos
-    distintos, y fue precisamente esa duplicación la que dejó divergir la
-    fórmula sin que nada lo notara; `test_consolidacion_una_sola_verdad` lo
-    vigila a partir de ahora.
-    """
-    from foundationcalc.analysis.consolidacion_1d import Tv_from_U
-
+    """Delega en ``foundationcalc.analysis.consolidacion_1d.Tv_from_U``."""
     return Tv_from_U(U)
 
 
 def evaluate_consolidation(inp: ConsolidationInput) -> ConsolidationResult:
-    sigma_f = inp.sigma_v_0_kPa + inp.delta_sigma_kPa
-    if sigma_f <= inp.sigma_v_0_kPa:
-        Sc_m = 0.0
-    else:
-        Sc_m = (inp.Cc / (1 + inp.e_0)) * inp.H_layer_m * log10(
-            sigma_f / max(inp.sigma_v_0_kPa, 1e-9)
-        )
-    Sc_mm = Sc_m * 1000.0
-
+    """Evalúa asentamiento primario y tiempos t50/t90 delegando en ``analysis.consolidacion_1d``."""
     H_dr = inp.H_layer_m / 2.0 if inp.drainage == "double" else inp.H_layer_m
-    Tv_50 = _Tv_from_U(0.5)
-    Tv_90 = _Tv_from_U(0.9)
+    if inp.delta_sigma_kPa <= 0.0:
+        Sc_mm = 0.0
+        Tv_50 = _Tv_from_U(0.5)
+        Tv_90 = _Tv_from_U(0.9)
+    else:
+        res = _consolidate_canonical(
+            _AnalysisConsolidationInput(
+                H_layer_m=inp.H_layer_m,
+                sigma_v0_kPa=max(inp.sigma_v_0_kPa, 1e-9),
+                delta_sigma_kPa=inp.delta_sigma_kPa,
+                Cc=inp.Cc,
+                Cr=0.0,
+                e0=inp.e_0,
+                cv_m2_per_year=inp.cv_m2_per_year,
+                drainage=inp.drainage,
+                OCR=1.0,
+            )
+        )
+        Sc_mm = res.Sc_mm
+        Tv_50 = res.Tv_50
+        Tv_90 = res.Tv_90
+
     t_50_yr = Tv_50 * H_dr ** 2 / inp.cv_m2_per_year
     t_90_yr = Tv_90 * H_dr ** 2 / inp.cv_m2_per_year
 
