@@ -1,5 +1,7 @@
 # foundationcalc — diseño de cimentaciones en Python: EN 1997-1, EN 1992-1-1, ACI 318, muros, pilotes, losas y zapatas
 
+**Español** · [English](README.en.md) · [Português](README.pt.md) · [Italiano](README.it.md)
+
 Cálculo geotécnico y estructural de cimentaciones superficiales y profundas: capacidad portante completa según EN 1997-1 Anexo D (enfoques DA1, DA2 y DA3, área efectiva de Meyerhof, drenada y no drenada), presiones de contacto con despegue, asientos elásticos de Steinbrenner y consolidación 1D de Terzaghi, correlaciones CPT y SPT, flexión de zapatas y punzonamiento biaxial según Eurocódigo 2 (§6.4 perímetros de control dentro de 2d) y ACI 318-19 (§22.6 momento desbalanceado γ_v y J_c), zapatas combinadas y centradoras (NSR-10 / EC8), zapatas para grúas torre, muros en ménsula, sótano, gravedad, contrafuertes, pantallas y tierra armada (MSE), pilotes axiales (α, β, factores de correlación ξ y normas EN/AASHTO/AS 2159), curvas p-y por diferencias finitas, grupos rígidos, losas de cimentación Mindlin sobre lecho de Winkler y API REST con FastAPI. Dependencias: `pydantic`, `reportlab`.
 
 [![CI](https://github.com/jmurgass99/foundationcalc/actions/workflows/ci.yml/badge.svg)](https://github.com/jmurgass99/foundationcalc/actions/workflows/ci.yml)
