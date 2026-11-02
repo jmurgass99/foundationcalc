@@ -1,3 +1,5 @@
+C:\Users\jesus\AppData\Local\Temp\jmv\foundationcalc\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
 === foundationcalc v1.1.0 — API REST FastAPI ===
 
 1. GET / -> Nombre: FoundationCalc
@@ -19,9 +21,10 @@
 3. POST /api/walls/cantilever (Muro ménsula H = 4,5 m):
    FS deslizamiento = 1.069
    FS vuelco        = 2.864
-   bearing_FS       = None (no evaluado por este servicio)
+   bearing_FS       = None (sin evaluate_bearing no se evalúa)
    Fuste: M_stem = 107.1 kN·m/m, espesor mín = 350 mm
    [OK] Coincidencia exacta con walls.design_cantilever_wall
+   Con evaluate_bearing = true: bearing_FS = q_Rd/q_Ed = 129.3/138.5 = 0.93 (EN 1997-1, resistencia y acción ya de cálculo: cumple si ≥ 1, no es un FS global de 3)
 
 4. POST /api/piles/axial (Pilote Ø0,8 m, L = 15 m en arcilla):
    Q_skin      = 1256.6 kN
@@ -32,6 +35,8 @@
 
 5. POST /api/bearing/multilayer (Zapata 2,5×2,5 m, estrato Vesić):
    qu = 1172.08 kPa, qa = 390.69 kPa (FS = 3.0)
+   0.3 m de arena bajo la base sobre arcilla c_u = 25 kPa, method = vesic          : qu =   1975.1 kPa  (solo mira el estrato de apoyo)
+   0.3 m de arena bajo la base sobre arcilla c_u = 25 kPa, method = meyerhof_hanna : qu =    194.8 kPa  (Punzonamiento Meyerhof-Hanna: q_punch = 194.8 kPa (estrato superior = 1946.5 kPa, inferior)
 
 6. POST /api/seismic/mononobe_okabe (H = 5 m, kh = 0,15, kv = 0,05):
    K_AE = 0.3606, P_AE = 81.37 kN/m, theta = 8.97°
@@ -39,5 +44,5 @@
 Límites documentados:
   - Los endpoints de la API delegan en los servicios predimensionadores.
   - /api/footings/isolated usa tensiones admisibles frente a ACI 318-19, no Eurocódigo 7.
-  - /api/walls/cantilever reporta bearing_FS como nulo (la capacidad portante debe verificarse con CantileverWallDesigner).
-  - /api/bearing/multilayer es un servicio histórico/deprecado; la calculadora canónica es analysis.bearing_capacity.
+  - /api/walls/cantilever devuelve bearing_FS nulo salvo con evaluate_bearing = true (CantileverWallDesigner, EN 1997-1).
+  - /api/bearing/multilayer con el método por defecto solo mira el estrato de apoyo; con method = meyerhof_hanna comprueba el punzonamiento del inferior.

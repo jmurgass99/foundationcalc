@@ -75,12 +75,16 @@ def main() -> None:
             print(f"\n3. POST /api/walls/cantilever (Muro ménsula H = 4,5 m):")
             print(f"   FS deslizamiento = {res_w['sliding_FS']:.3f}")
             print(f"   FS vuelco        = {res_w['overturning_FS']:.3f}")
-            print(f"   bearing_FS       = {res_w['bearing_FS']} (no evaluado por este servicio)")
+            print(f"   bearing_FS       = {res_w['bearing_FS']} (sin evaluate_bearing no se evalúa)")
             print(f"   Fuste: M_stem = {res_w['stem_design']['M_stem']:.1f} kN·m/m, espesor mín = {res_w['stem_design']['thickness_min_mm']:.0f} mm")
 
             direct_wall = walls.design_cantilever_wall(walls.CantileverWallInput(**wall_payload))
             assert abs(res_w["sliding_FS"] - direct_wall.sliding_FS) < 1e-4
             print(f"   [OK] Coincidencia exacta con walls.design_cantilever_wall")
+            r_wall_ec7 = client.post("/api/walls/cantilever", json={**wall_payload, "evaluate_bearing": True}).json()
+            sd = r_wall_ec7["stem_design"]
+            print(f"   Con evaluate_bearing = true: bearing_FS = q_Rd/q_Ed = {sd['bearing_q_Rd_kPa']:.1f}/{sd['bearing_q_Ed_kPa']:.1f} = "
+                  f"{r_wall_ec7['bearing_FS']:.2f} (EN 1997-1, resistencia y acción ya de cálculo: cumple si ≥ 1, no es un FS global de 3)")
 
             # 4. Pilote axial
             pile_payload = {
@@ -117,6 +121,12 @@ def main() -> None:
             res_b = r_bearing.json()
             print(f"\n5. POST /api/bearing/multilayer (Zapata 2,5×2,5 m, estrato Vesić):")
             print(f"   qu = {res_b['qu_kPa']:.2f} kPa, qa = {res_b['qa_kPa']:.2f} kPa (FS = {res_b['FS']:.1f})")
+            weak = {**bearing_payload, "layers": [{"thickness": 1.5, "gamma": 19.0, "phi": 35.0, "c": 0.0},
+                                                  {"thickness": 6.0, "gamma": 17.0, "phi": 0.0, "c": 25.0, "qu": 50.0}]}
+            for m in ("vesic", "meyerhof_hanna"):
+                rb = client.post("/api/bearing/multilayer", json={**weak, "method": m}).json()
+                print(f"   {1.5 - weak['depth']:.1f} m de arena bajo la base sobre arcilla c_u = 25 kPa, method = {m:15}: "
+                      f"qu = {rb['qu_kPa']:8.1f} kPa" + (f"  ({rb['notes'][-1][:90]})" if m == "meyerhof_hanna" else "  (solo mira el estrato de apoyo)"))
 
             # 6. Empuje sísmico Mononobe-Okabe
             mo_payload = {
@@ -138,8 +148,8 @@ def main() -> None:
     print("\nLímites documentados:")
     print("  - Los endpoints de la API delegan en los servicios predimensionadores.")
     print("  - /api/footings/isolated usa tensiones admisibles frente a ACI 318-19, no Eurocódigo 7.")
-    print("  - /api/walls/cantilever reporta bearing_FS como nulo (la capacidad portante debe verificarse con CantileverWallDesigner).")
-    print("  - /api/bearing/multilayer es un servicio histórico/deprecado; la calculadora canónica es analysis.bearing_capacity.")
+    print("  - /api/walls/cantilever devuelve bearing_FS nulo salvo con evaluate_bearing = true (CantileverWallDesigner, EN 1997-1).")
+    print("  - /api/bearing/multilayer con el método por defecto solo mira el estrato de apoyo; con method = meyerhof_hanna comprueba el punzonamiento del inferior.")
 
 
 if __name__ == "__main__":

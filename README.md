@@ -954,6 +954,8 @@ Límites: cargas de pilar en el nudo más cercano (dependen de la malla), k_s ú
 <details><summary>Salida real de <code>python examples/fastapi_rest_api_client_and_services_isolated_cantilever_and_piles.py</code></summary>
 
 ```text
+C:\Users\jesus\AppData\Local\Temp\jmv\foundationcalc\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
 === foundationcalc v1.1.0 — API REST FastAPI ===
 
 1. GET / -> Nombre: FoundationCalc
@@ -975,9 +977,10 @@ Límites: cargas de pilar en el nudo más cercano (dependen de la malla), k_s ú
 3. POST /api/walls/cantilever (Muro ménsula H = 4,5 m):
    FS deslizamiento = 1.069
    FS vuelco        = 2.864
-   bearing_FS       = None (no evaluado por este servicio)
+   bearing_FS       = None (sin evaluate_bearing no se evalúa)
    Fuste: M_stem = 107.1 kN·m/m, espesor mín = 350 mm
    [OK] Coincidencia exacta con walls.design_cantilever_wall
+   Con evaluate_bearing = true: bearing_FS = q_Rd/q_Ed = 129.3/138.5 = 0.93 (EN 1997-1, resistencia y acción ya de cálculo: cumple si ≥ 1, no es un FS global de 3)
 
 4. POST /api/piles/axial (Pilote Ø0,8 m, L = 15 m en arcilla):
    Q_skin      = 1256.6 kN
@@ -988,6 +991,8 @@ Límites: cargas de pilar en el nudo más cercano (dependen de la malla), k_s ú
 
 5. POST /api/bearing/multilayer (Zapata 2,5×2,5 m, estrato Vesić):
    qu = 1172.08 kPa, qa = 390.69 kPa (FS = 3.0)
+   0.3 m de arena bajo la base sobre arcilla c_u = 25 kPa, method = vesic          : qu =   1975.1 kPa  (solo mira el estrato de apoyo)
+   0.3 m de arena bajo la base sobre arcilla c_u = 25 kPa, method = meyerhof_hanna : qu =    194.8 kPa  (Punzonamiento Meyerhof-Hanna: q_punch = 194.8 kPa (estrato superior = 1946.5 kPa, inferior)
 
 6. POST /api/seismic/mononobe_okabe (H = 5 m, kh = 0,15, kv = 0,05):
    K_AE = 0.3606, P_AE = 81.37 kN/m, theta = 8.97°
@@ -995,15 +1000,15 @@ Límites: cargas de pilar en el nudo más cercano (dependen de la malla), k_s ú
 Límites documentados:
   - Los endpoints de la API delegan en los servicios predimensionadores.
   - /api/footings/isolated usa tensiones admisibles frente a ACI 318-19, no Eurocódigo 7.
-  - /api/walls/cantilever reporta bearing_FS como nulo (la capacidad portante debe verificarse con CantileverWallDesigner).
-  - /api/bearing/multilayer es un servicio histórico/deprecado; la calculadora canónica es analysis.bearing_capacity.
+  - /api/walls/cantilever devuelve bearing_FS nulo salvo con evaluate_bearing = true (CantileverWallDesigner, EN 1997-1).
+  - /api/bearing/multilayer con el método por defecto solo mira el estrato de apoyo; con method = meyerhof_hanna comprueba el punzonamiento del inferior.
 ```
 
 </details>
 
 ## Verificación
 
-La suite de pruebas consta de 73 tests ejecutados automáticamente en GitHub Actions bajo Python 3.11, 3.12 y 3.13 en Ubuntu y Windows.
+La suite de pruebas consta de 75 tests ejecutados automáticamente en GitHub Actions bajo Python 3.11, 3.12 y 3.13 en Ubuntu y Windows.
 
 - **Tests dorados de capacidad portante (`test_golden_w00675_bearing_factors.py`)**: anclados a la ficha W00675 de Eurocódigo 7, comprobando los factores N_q, N_c y N_γ contra los desarrollos analíticos exactos de Prandtl, Reissner y Vesić.
 - **Tests dorados de punzonamiento (`test_golden_punching_compact.py`, `test_golden_aci318_punching_shear_moment.py`)**: verifican el barrido de perímetros de control reducidos dentro de 2d según EN 1992-1-1 §6.4.4(2) y la transmisión de momento por excentricidad de cortante γ_v según ACI 318-19.
@@ -1014,8 +1019,8 @@ La suite de pruebas consta de 73 tests ejecutados automáticamente en GitHub Act
 
 ## Limitaciones
 
-- **Capacidad portante multicapa**: el servicio histórico `foundationcalc.services.bearing.bearing_capacity_multilayer` está deprecado y evalúa únicamente el estrato de apoyo; para análisis riguroso multicapa debe emplearse `foundationcalc.analysis.bearing_capacity` verificando el punzonamiento en estratos débiles subyacentes.
-- **Predimensionado de muros en la API**: el endpoint `/api/walls/cantilever` devuelve `bearing_FS = null` por diseño, ya que no realiza una comprobación de capacidad portante geotécnica completa; esta comprobación debe llevarse a cabo con `design.retaining_wall.CantileverWallDesigner`.
+- **Capacidad portante multicapa**: `services.bearing.bearing_capacity_multilayer` (y `/api/bearing/multilayer`) con el método por defecto evalúa solo el estrato de apoyo, la vía deprecada; con `method="meyerhof_hanna"` delega en `analysis.multi_layer_bc` y comprueba el punzonamiento del estrato inferior (Meyerhof y Hanna, 1978), sin contrastar aquí con un caso publicado. El caso de la API muestra la diferencia: 1975 frente a 195 kPa con 0,3 m de arena sobre arcilla blanda.
+- **Predimensionado de muros en la API**: `/api/walls/cantilever` devuelve `bearing_FS = null` salvo con `evaluate_bearing = true`, que pasa por `CantileverWallDesigner` (EN 1997-1). Ese `bearing_FS` es q_Rd/q_Ed con valores ya de cálculo: cumple si es ≥ 1, no es un factor global comparable a 3. Los FS de deslizamiento y vuelco siguen siendo los globales de Rankine.
 - **Zapatas combinadas**: el módulo actual diseña zapatas de dos columnas; configuraciones complejas de tres o más pilares alineados deben modelarse mediante vigas continuas sobre lecho elástico o losas de cimentación.
 - **Diferencias finitas en pilotes laterales**: la formulación implementada en `pile_lateral` modela pilotes de sección constante; variaciones escalonadas de inercia o estratigrafías con inversión brusca de rigidez deben discretizarse con mallas refinadas.
 - **Losa de cimentación Mindlin**: el análisis elastoplástico de despegue en `analysis.mat_foundation` utiliza un esquema de rigidez secante en los muelles de Winkler que converge para despegues moderados (< 30 % de área); despegues severos requieren análisis no lineal con contacto de fricción en software especializado.
