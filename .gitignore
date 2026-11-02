@@ -68,3 +68,6 @@ Documentos de referencia */
 *.sqlite3
 
 # herramientas locales de agentes
+
+# visor web (npm)
+web/node_modules/

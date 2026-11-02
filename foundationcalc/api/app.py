@@ -51,7 +51,7 @@ def api_isolated_footing(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/walls/cantilever", summary="Predimensionado de muro en ménsula con factores de seguridad globales (Rankine); no evalúa la capacidad portante (bearing_FS = null)")
+@router.post("/api/walls/cantilever", summary="Predimensionado de muro en ménsula con factores de seguridad globales (Rankine); bearing_FS = null salvo con evaluate_bearing = true (EN 1997-1 con CantileverWallDesigner)")
 def api_cantilever_wall(inp: dict):
     from ..services import walls
     try:
@@ -88,7 +88,7 @@ def api_pile_axial(inp: dict):
         raise HTTPException(400, str(exc))
 
 
-@router.post("/api/bearing/multilayer", summary="Capacidad portante de Vesić en el estrato de apoyo con FS global (servicio deprecado: no combina estratos)")
+@router.post("/api/bearing/multilayer", summary="Capacidad portante con FS global: Vesić en el estrato de apoyo (deprecado, no combina estratos) o, con method = meyerhof_hanna, punzonamiento de Meyerhof-Hanna sobre el estrato inferior")
 def api_bearing(inp: dict):
     from ..services import bearing
     try:
