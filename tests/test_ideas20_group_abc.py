@@ -118,13 +118,13 @@ def test_quantities():
     assert res.masa_acero_kg == pytest.approx(240.0)
 
 
-def test_dxf_armado_no_dxfjm():
+def test_dxf_armado_no_dxfjm(tmp_path):
     from foundationcalc.integration.dxf_armado import (
         ArmadoZapataDXF, export_armado_zapata,
     )
     arm = ArmadoZapataDXF(B_m=2, L_m=2, H_m=0.5, n_x=6, n_y=6, db_x_mm=12, db_y_mm=12)
-    # No falla aunque DXFStructuralJm no este
-    result = export_armado_zapata(arm, "test.dxf")
+    # No falla aunque DXFStructuralJm no este; el fichero va a un directorio temporal
+    result = export_armado_zapata(arm, str(tmp_path / "test.dxf"))
     assert isinstance(result, bool)
 
 
